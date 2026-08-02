@@ -32,14 +32,14 @@ public class RedisConfig {
     @Bean(value = "securityRedisTemplate")
     public RedisTemplate<String, String> securityRedisTemplate() {
         RedisTemplateFactory<String> redisTemplateFactory = new RedisTemplateFactory<>(String.class);
-        LettuceConnectionFactory lettuceConnectionFactory = redisTemplateFactory.createConnectionFactory(redisProperties.getSources().get("security"), clientResources);
+        LettuceConnectionFactory lettuceConnectionFactory = redisTemplateFactory.createConnectionFactory(this.redisProperties.getSources().get("security"), this.clientResources);
         return redisTemplateFactory.createTemplate(lettuceConnectionFactory);
     }
 
     @Bean(value = "hotDataRedisTemplate")
     public RedisTemplate<String, String> hotDataRedisTemplate() {
         RedisTemplateFactory<String> redisTemplateFactory = new RedisTemplateFactory<>(String.class);
-        LettuceConnectionFactory lettuceConnectionFactory = redisTemplateFactory.createConnectionFactory(redisProperties.getSources().get("hot-data"), clientResources);
+        LettuceConnectionFactory lettuceConnectionFactory = redisTemplateFactory.createConnectionFactory(this.redisProperties.getSources().get("hot-data"), this.clientResources);
         return redisTemplateFactory.createTemplate(lettuceConnectionFactory);
     }
 

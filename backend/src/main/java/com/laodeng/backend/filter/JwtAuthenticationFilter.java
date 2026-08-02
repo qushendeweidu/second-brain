@@ -53,19 +53,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.info("用户Token无效");
                 throw new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效");
             }
-            Long userId = jwtUtils.extractId(token); // 从token中提取用户id
+            Long userId = this.jwtUtils.extractId(token); // 从token中提取用户id
             // 首先判断当前redis是否存在该用户的JWT如果不存在就抛出异常让前端去跳转登录页面
-            ThrowUtils.throwIf(!redisSecurityHandle.checkSecurityKey(userId.toString()), new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token不存在"));
-            if (!jwtUtils.isTokenValid(token)) {
+            ThrowUtils.throwIf(!this.redisSecurityHandle.checkSecurityKey(userId.toString()), new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token不存在"));
+            if (!this.jwtUtils.isTokenValid(token)) {
                 log.info("用户Token过期");
-                User user = userService.getById(userId);
+                User user = this.userService.getById(userId);
                 if (ObjUtil.isNull(user)) {
                     log.info("用户不存在");
                     throw new BusinessException(ErrorCode.USER_NOT_FOUND_ERROR, "用户不存在");
                 } else if (ObjUtil.equals(user.getId(), userId)) {
                     log.info("用户确实存在开始创建新的jwt");
-                    token = jwtUtils.createToken(userId);
-                    redisSecurityHandle.createSecurityKey(userId.toString(), token);
+                    token = this.jwtUtils.createToken(userId);
+                    this.redisSecurityHandle.createSecurityKey(userId.toString(), token);
                 } else {
                     throw new BusinessException(ErrorCode.USER_NOT_FOUND_ERROR, "用户不存在");
                 }
@@ -73,11 +73,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             log.info("当前Token: {}", token);
             List<GrantedAuthority> authorities = new ArrayList<>();
             // 从token中获取用户角色
-            jwtUtils.extractRoles(token).forEach(
+            this.jwtUtils.extractRoles(token).forEach(
                     role -> authorities.add(new SimpleGrantedAuthority("ROLE_"+role))
             );
             // 从token中获取用户权限
-            jwtUtils.extractPermissions(token).forEach(
+            this.jwtUtils.extractPermissions(token).forEach(
                     permission -> authorities.add(new SimpleGrantedAuthority(permission))
             );
             // 创建Authentication对象

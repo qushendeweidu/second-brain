@@ -34,7 +34,7 @@ public class GsonRedisSerializer<T> implements RedisSerializer<T> {
         if (value == null){
             return new byte[0];
         }
-        return gson.toJson(value).getBytes(StandardCharsets.UTF_8);
+        return this.gson.toJson(value).getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
@@ -43,15 +43,15 @@ public class GsonRedisSerializer<T> implements RedisSerializer<T> {
             return null;
         }
         String json = new String(bytes, StandardCharsets.UTF_8);
-        return gson.fromJson(json, clazz);
+        return this.gson.fromJson(json, this.clazz);
     }
 
     public boolean canSerialize() {
-        return RedisSerializer.super.canSerialize(clazz);
+        return RedisSerializer.super.canSerialize(this.clazz);
     }
 
     @Override
     public Class<?> getTargetType() {
-        return clazz;
+        return this.clazz;
     }
 }

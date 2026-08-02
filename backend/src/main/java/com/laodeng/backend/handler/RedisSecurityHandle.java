@@ -32,7 +32,7 @@ public class RedisSecurityHandle {
     public void createSecurityKey(String key, String value) {
         try{
             key = decorateKey(key);
-            securityRedisTemplate.opsForValue().set(key, value,30, TimeUnit.DAYS);
+            this.securityRedisTemplate.opsForValue().set(key, value,30, TimeUnit.DAYS);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -45,7 +45,7 @@ public class RedisSecurityHandle {
     public void deleteSecurityKey(String key) {
         try{
             key = decorateKey(key);
-            securityRedisTemplate.delete(key);
+            this.securityRedisTemplate.delete(key);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -59,7 +59,7 @@ public class RedisSecurityHandle {
     public String getSecurityKey(String key) {
         try{
             key = decorateKey(key);
-            return securityRedisTemplate.opsForValue().get(key);
+            return this.securityRedisTemplate.opsForValue().get(key);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -73,7 +73,7 @@ public class RedisSecurityHandle {
     public Boolean checkSecurityKey(String key) {
         try{
             key = decorateKey(key);
-            return securityRedisTemplate.hasKey(key);
+            return this.securityRedisTemplate.hasKey(key);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

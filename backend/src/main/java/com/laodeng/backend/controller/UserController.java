@@ -33,11 +33,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-    private final JwtUtils jwtUtils;
 
     @PostMapping("/login")
     public R<String> login(@RequestBody @Validated LoginDTO loginDTO) {
-        String isLogin = userService.login(loginDTO);
+        String isLogin = this.userService.login(loginDTO);
         ThrowUtils.throwIf(isLogin==null, ErrorCode.OPERATION_ERROR);
         return R.success(isLogin);
     }
@@ -45,7 +44,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/list")
     public R<List<UserVO>> getUserVOByUserDTO(@RequestBody UserDTO userDTO) {
-        List<UserVO> userVOByUserDTO = userService.getUserVOByUserDTO(userDTO);
+        List<UserVO> userVOByUserDTO = this.userService.getUserVOByUserDTO(userDTO);
         return R.success(userVOByUserDTO);
     }
 

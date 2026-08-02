@@ -50,19 +50,19 @@ public class JwtUtils {
     public String createToken(Long id) {
         LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserRole::getUserId, id);
-        UserRole userRole = userRoleService.getOne(queryWrapper);
+        UserRole userRole = this.userRoleService.getOne(queryWrapper);
         ThrowUtils.throwIf(userRole == null || ObjUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
         return Jwts.builder()
                 .header()
                 .type("JWT")
                 .and() // 创建JWT构建器
                 .subject(String.valueOf(id)) // 将用户的id添加到令牌中
-                .issuer(jwtProperties.getIssuer()) // 签发者
+                .issuer(this.jwtProperties.getIssuer()) // 签发者
                 .claim("roles", userRole.getRoles()) // 添加角色
                 .claim("permissions", userRole.getPermissions()) // 添加权限
                 .issuedAt(new Date()) // 签发时间
-                .expiration(new Date(System.currentTimeMillis() + jwtProperties.getExpiration())) // 令牌过期时间
-                .signWith(secretKey) // 向claim中添加密钥
+                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getExpiration())) // 令牌过期时间
+                .signWith(this.secretKey) // 向claim中添加密钥
                 .compact();
     }
 
@@ -109,7 +109,7 @@ public class JwtUtils {
             log.info("Token:{}", token);
             // 使用JWT库解析token
             return Jwts.parser()
-                    .verifyWith(secretKey) // 设置密钥
+                    .verifyWith(this.secretKey) // 设置密钥
                     .build()
                     .parseSignedClaims(token) // 解析并验证token
                     .getPayload();

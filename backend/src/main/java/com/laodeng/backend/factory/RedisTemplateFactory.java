@@ -68,11 +68,11 @@ public class RedisTemplateFactory<T> {
 
     public RedisTemplate<String, T> createTemplate(LettuceConnectionFactory lettuceConnectionFactory) {
         RedisTemplate<String, T> template = new RedisTemplate<>();
-        template.setKeySerializer(stringSerializer);
-        template.setHashKeySerializer(stringSerializer);
+        template.setKeySerializer(this.stringSerializer);
+        template.setHashKeySerializer(this.stringSerializer);
         template.setConnectionFactory(lettuceConnectionFactory);
-        template.setValueSerializer(gsonRedisSerializer);
-        template.setHashValueSerializer(gsonRedisSerializer);
+        template.setValueSerializer(this.gsonRedisSerializer);
+        template.setHashValueSerializer(this.gsonRedisSerializer);
         template.afterPropertiesSet(); //让 RedisTemplate 立刻检查并绑定
         return template;
     }

@@ -84,6 +84,10 @@ app:
             time-between-eviction-runs: 60s
           shutdown-timeout: 200ms
 
+frontend:
+  url: ${FRONTEND_URL}
+  max-age: ${FRONTEND_MAX_AGE}
+
 server:
   port: 8808
 

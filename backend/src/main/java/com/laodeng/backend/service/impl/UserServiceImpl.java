@@ -52,11 +52,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String token = null;
         if (user.getPassword().equals(loginDTO.getPassword())){
             Long userId = user.getId();
-            if (redisSecurityHandle.checkSecurityKey(userId.toString())){
-                token = redisSecurityHandle.getSecurityKey(userId.toString());
+            if (this.redisSecurityHandle.checkSecurityKey(userId.toString())){
+                token = this.redisSecurityHandle.getSecurityKey(userId.toString());
             }else {
-                token = jwtUtils.createToken(userId);
-                redisSecurityHandle.createSecurityKey(userId.toString(), token);
+                token = this.jwtUtils.createToken(userId);
+                this.redisSecurityHandle.createSecurityKey(userId.toString(), token);
             }
         }
         return token;
@@ -72,7 +72,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Transactional(rollbackFor = Exception.class)
     public List<UserVO> getUserVOByUserDTO(UserDTO userDTO) {
         log.info("当前的请求体:{}", userDTO);
-        return userMapper.getUserVOByUserDTO(userDTO);
+        return this.userMapper.getUserVOByUserDTO(userDTO);
     }
 
 
