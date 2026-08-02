@@ -1,0 +1,42 @@
+# ---- Docker 持久化数据（严禁提交）----
+.docker/mysql/data/
+.docker/mysql/logs/
+.docker/redis/data/
+.docker/redis/logs/
+
+# ---- 密钥 / 凭据 ----
+.env
+.env.*
+*.key
+*.pem
+*.pfx
+credentials*
+secrets*
+*token*
+
+# ---- 数据库文件 ----
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+
+# ---- 敏感配置 ----
+*-secret.yml
+*-secret.yaml
+database.yml
+
+# ---- 构建产物 ----
+target/
+build/
+dist/
+node_modules/
+*.log
+
+# ---- IDE ----
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.DS_Store
+Thumbs.db

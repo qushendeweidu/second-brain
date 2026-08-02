@@ -1,0 +1,89 @@
+spring:
+  application:
+    name: second-brain
+  datasource:
+    url: jdbc:mysql://localhost:5506/second_brain?useSSL=false&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  config:
+    import:
+      - optional:file:../.env[.properties]
+      - optional:file:./.env[.properties]
+
+mybatis-plus:
+  # XML 映射文件位置
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 实体类别名扫描包
+  type-aliases-package: com.laodeng.backend.domain.po
+  configuration:
+    # 日志输出（开发时打开，方便看 SQL）
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # 下划线转驼峰（默认就是 true，显式声明一下）
+    map-underscore-to-camel-case: true
+    # 懒加载
+    lazy-loading-enabled: true
+  global-config:
+    db-config:
+      # 主键类型：ASSIGN_ID = 雪花算法
+      id-type: ASSIGN_ID
+      # 逻辑删除字段
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+      # 表名前缀（如果你的表有统一前缀可以配，比如 t_）
+      # table-prefix: t_
+      # 字段填充策略
+      insert-strategy: NOT_NULL
+      update-strategy: NOT_NULL
+jwt:
+  secret: 2swDnoE_Nv+1QRs?+4-ZHG+M!TZ*tfHXCmMYyCo^VzD161LUi-fHwb2}ftDx
+  expiration: 2592000000
+  issuer: second-brain
+
+
+app:
+  redis:
+    sources:
+      # 权限校验缓存
+      security:
+        host: ${REDIS_HOST}                         # 同实例不同库，host/port/账密复用
+        port: ${REDIS_PORT}
+        username: ${REDIS_USERNAME}
+        password: ${REDIS_PASSWORD}
+        database: 0
+        client-name: ${spring.application.name}-security # CLIENT LIST 一眼看出
+        timeout: 5000ms
+        connect-timeout: 3000ms
+        lettuce:
+          pool:
+            enabled: true
+            max-active: 16                          # 高 QPS，池子开大
+            max-idle: 8
+            min-idle: 2
+            max-wait: -1ms                          # 拿不到立即报错，避免业务阻塞
+            time-between-eviction-runs: 60s
+          shutdown-timeout: 200ms
+
+      hot-data:
+        host: ${REDIS_HOST}
+        port: ${REDIS_PORT}
+        username: ${REDIS_USERNAME}
+        password: ${REDIS_PASSWORD}
+        database: 1
+        client-name: ${spring.application.name}-hot-data
+        timeout: 5000ms
+        connect-timeout: 3000ms
+        lettuce:
+          pool:
+            enabled: true
+            max-active: 8                           # 大对象，池子小点防 OOM
+            max-idle: 8
+            min-idle: 2
+            max-wait: -1ms
+            time-between-eviction-runs: 60s
+          shutdown-timeout: 200ms
+
+server:
+  port: 8808
+

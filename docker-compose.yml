@@ -1,0 +1,48 @@
+name: second-brain
+
+services:
+  mysql:
+    image: mysql:8.0.12
+    container_name: mysql-service
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: second_brain
+      TZ: Asia/Shanghai
+    ports:
+      - "${MYSQL_PORT}:3306"
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - ./.docker/mysql/data:/var/lib/mysql
+      - ./.docker/mysql/logs:/var/log/mysql
+      - ./.docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - second-brain
+
+  redis:
+    image: redis:latest
+    container_name: redis-service
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+      REDIS_USERNAME: ${REDIS_USERNAME}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "${REDIS_PORT}:6379"
+    command: >
+      sh -c "
+      mkdir -p /etc/redis &&
+      printf 'user default off\nuser %s on >%s ~* +@all\n' \"$$REDIS_USERNAME\" \"$$REDIS_PASSWORD\" > /etc/redis/users.acl &&
+      exec redis-server --aclfile /etc/redis/users.acl --appendonly yes
+      "
+    volumes:
+      - ./.docker/redis/data:/data
+    networks:
+      - second-brain
+
+networks:
+  second-brain:
+    driver: bridge

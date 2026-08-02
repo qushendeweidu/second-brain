@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.laodeng.backend.mapper.UserMapper">
+
+    <resultMap id="UserVOMap" type="com.laodeng.backend.domain.vo.UserVO">
+        <result column="username" property="username"/>
+        <result column="nickname" property="nickName"/>
+        <result column="email" property="email"/>
+        <result column="phone" property="phone"/>
+        <result column="status" property="status"/>
+        <result column="roles" property="roles"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="permissions" property="permissions"
+                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
+        <result column="user_create_time" property="userCreateTime"/>
+        <result column="user_update_time" property="userUpdateTime"/>
+        <result column="role_create_time" property="roleCreateTime"/>
+        <result column="role_update_time" property="roleUpdateTime"/>
+    </resultMap>
+
+    <select id="getUserVOByUserDTO" parameterType="com.laodeng.backend.domain.dto.UserDTO"
+            resultMap="UserVOMap">
+
+        select
+        u.username,
+        u.nickname,
+        u.email,
+        u.phone,
+        u.status,
+        ur.roles,
+        ur.permissions,
+        u.create_time AS user_create_time,
+        u.update_time AS user_update_time,
+        ur.create_time AS role_create_time,
+        ur.update_time AS role_update_time
+        from user u left join user_role ur on u.id = ur.user_id
+        <where>
+            <if test="userDTO.username != null and userDTO.username != '' ">
+                and u.username = #{userDTO.username}
+            </if>
+            <if test="userDTO.nickName != null and userDTO.nickName != '' ">
+                and u.nickname = #{userDTO.nickName}
+            </if>
+            <if test="userDTO.email != null and userDTO.email != '' ">
+                and u.email = #{userDTO.email}
+            </if>
+            <if test="userDTO.phone != null and userDTO.phone != '' ">
+                and u.phone = #{userDTO.phone}
+            </if>
+            <if test="userDTO.status != null and userDTO != '' ">
+                and u.status = #{userDTO.status}
+            </if>
+            <if test="userDTO.roles != null and userDTO.roles.size() > 0 ">
+                and
+                <foreach item="role" collection="userDTO.roles" open="(" close=")" separator="or">
+                    JSON_CONTAINS(ur.roles, JSON_QUOTE(#{role}))
+                </foreach>
+            </if>
+            <if test="userDTO.permissions!=null and userDTO.permissions.size() >0">
+                and
+                <foreach item="permission" collection="userDTO.permissions" open="(" close=")" separator="or">
+                    JSON_CONTAINS(ur.permissions, JSON_QUOTE(#{permission}))
+                </foreach>
+            </if>
+            <if test="userDTO.userCreateStartTime != null and userDTO.userCreateStartTime != '' ">
+                and u.create_time &lt;= #{userDTO.userCreateStartTime}
+            </if>
+            <if test="userDTO.userCreateEndTime != null and userDTO.userCreateEndTime != '' ">
+                and u.create_time &lt;= #{userDTO.userCreateEndTime}
+            </if>
+            <if test="userDTO.userUpdateStartTime != null and userDTO.userUpdateStartTime != '' ">
+                and u.update_time &lt;= #{userDTO.userUpdateStartTime}
+            </if>
+            <if test="userDTO.userUpdateEndTime != null and userDTO.userUpdateEndTime != '' ">
+                and u.update_time &lt;= #{userDTO.userUpdateEndTime}
+            </if>
+            <if test="userDTO.roleCreateStartTime != null and userDTO.roleCreateStartTime != '' ">
+                and ur.create_time &lt;= #{userDTO.roleCreateStartTime}
+            </if>
+            <if test="userDTO.roleCreateEndTime != null and userDTO.roleCreateEndTime != '' ">
+                and ur.create_time &lt;= #{userDTO.roleCreateEndTime}
+            </if>
+            <if test="userDTO.roleUpdateStartTime != null and userDTO.roleUpdateStartTime != '' ">
+                and ur.update_time &lt;= #{userDTO.roleUpdateStartTime}
+            </if>
+            <if test="userDTO.roleUpdateEndTime != null and userDTO.roleUpdateEndTime != '' ">
+                and ur.update_time &lt;= #{userDTO.roleUpdateEndTime}
+            </if>
+        </where>
+
+    </select>
+
+</mapper>
