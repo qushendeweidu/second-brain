@@ -8,7 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/28 22:51
- * @description
+ * @description jwt相关配置类
  */
 
 @Data

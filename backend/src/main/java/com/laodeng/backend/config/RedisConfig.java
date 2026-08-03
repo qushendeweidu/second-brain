@@ -15,7 +15,7 @@ import org.springframework.data.redis.core.RedisTemplate;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/28 11:52
- * @description
+ * @description redis配置类
  */
 
 @Log4j2

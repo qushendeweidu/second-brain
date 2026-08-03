@@ -27,7 +27,7 @@ import java.util.function.Function;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/28 15:06
- * @description
+ * @description JWT工具类，用于创建和解析JWT令牌
  */
 
 @Log4j2

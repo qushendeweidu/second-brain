@@ -4,7 +4,10 @@ package com.laodeng.backend.exception;
 import com.laodeng.backend.common.ErrorCode;
 
 /**
- * 抛异常工具类
+ * @author laodeng
+ * @version v1.0
+ * @date 2026/7/31 11:49
+ * @description 异常工具类
  */
 public class ThrowUtils {
 

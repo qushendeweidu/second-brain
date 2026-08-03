@@ -9,7 +9,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/28 11:50
- * @description
+ * @description web配置
  */
 
 @Log4j2

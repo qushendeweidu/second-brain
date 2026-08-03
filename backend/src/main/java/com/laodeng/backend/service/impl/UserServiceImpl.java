@@ -24,7 +24,7 @@ import java.util.List;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/26 09:16
- * @description
+ * @description 用户业务层实现类
  */
 
 @Log4j2
@@ -37,7 +37,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 登陆
-     *
      * @param loginDTO 登陆信息
      * @return 登陆结果
      */

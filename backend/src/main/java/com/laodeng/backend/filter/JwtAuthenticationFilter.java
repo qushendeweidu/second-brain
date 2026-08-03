@@ -30,7 +30,7 @@ import java.util.List;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/28 13:00
- * @description
+ * @description Jwt结合security的拦截器
  */
 
 @Log4j2

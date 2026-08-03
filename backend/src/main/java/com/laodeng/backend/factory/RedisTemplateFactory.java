@@ -18,7 +18,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/31 11:49
- * @description
+ * @description RedisTemplate 工厂类，用于创建 RedisTemplate 实例
  */
 
 @Log4j2
@@ -40,7 +40,7 @@ public class RedisTemplateFactory<T> {
         redisConfig.setHostName(source.getHost()); // redis的Host
         redisConfig.setPort(source.getPort()); // redis的端口号
         redisConfig.setDatabase(source.getDatabase()); // 数据源
-        redisConfig.setUsername(source.getUsername());
+        redisConfig.setUsername(source.getUsername()); //redis的用户名
         redisConfig.setPassword(RedisPassword.of(source.getPassword())); // redis的密码
 
         // 连接池配置

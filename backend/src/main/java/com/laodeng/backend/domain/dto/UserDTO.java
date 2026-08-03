@@ -13,7 +13,7 @@ import java.util.List;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/26 12:04
- * @description
+ * @description 用户查询条件DTO类
  */
 
 @Data

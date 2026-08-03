@@ -4,8 +4,10 @@ import com.laodeng.backend.common.ErrorCode;
 import lombok.Getter;
 
 /**
- * 自定义异常类
- *
+ * @author laodeng
+ * @version v1.0
+ * @date 2026/7/31 11:49
+ * @description 业务异常类
  */
 @Getter
 public class BusinessException extends RuntimeException {

@@ -7,6 +7,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.crypto.SecretKey;
 
+/**
+ * @author laodeng
+ * @version v1.0
+ * @date 2026/7/28 15:06
+ * @description 测试类
+ */
+
 @SpringBootTest
 class BackendApplicationTests {
 

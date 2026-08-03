@@ -4,7 +4,7 @@ package com.laodeng.backend.utils;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/29 22:36
- * @description
+ * @description ThreadLocal工具类
  */
 
 public class ThreadLocalUtils {

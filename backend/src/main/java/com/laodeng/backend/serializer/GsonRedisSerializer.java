@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/31 16:12
- * @description
+ * @description Gson序列化器
  */
 
 @Log4j2

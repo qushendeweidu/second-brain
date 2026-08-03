@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/31 17:54
- * @description
+ * @description Redis安全令牌处理类
  */
 
 @Component

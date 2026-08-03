@@ -7,7 +7,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @author laodeng
  * @version v1.0
  * @date 2026/8/2 19:29
- * @description
+ * @description 前端相关配置类
  */
 
 @Data

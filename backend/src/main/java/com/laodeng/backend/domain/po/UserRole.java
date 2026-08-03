@@ -19,7 +19,7 @@ import java.util.List;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/26 09:41
- * @description
+ * @description 用户权限实体类
  */
 
 @Data

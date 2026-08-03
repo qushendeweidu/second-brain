@@ -21,7 +21,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 全局异常处理器
+ * @author laodeng
+ * @version v1.0
+ * @date 2026/7/31 11:49
+ * @description 全局异常处理器
  */
 @RestControllerAdvice
 @Log4j2

@@ -11,7 +11,7 @@ import java.util.Map;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/31 14:51
- * @description
+ * @description redis相关配置类
  */
 
 @Data

@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/26 09:41
- * @description
+ * @description 用户实体类
  */
 
 @Data

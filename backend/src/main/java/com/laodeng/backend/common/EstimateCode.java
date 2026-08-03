@@ -9,7 +9,7 @@ import lombok.Getter;
  * @description
  */
 @Getter
-public enum Estimate {
+public enum EstimateCode {
 
     SUCCEED(1, "成功"),
     FAIL(0, "失败");
@@ -18,7 +18,7 @@ public enum Estimate {
 
     private final String message;
 
-    Estimate(int estimateCode, String message) {
+    EstimateCode(int estimateCode, String message) {
         this.estimateCode = estimateCode;
         this.message = message;
     }

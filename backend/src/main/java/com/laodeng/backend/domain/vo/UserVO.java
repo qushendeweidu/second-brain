@@ -15,7 +15,7 @@ import java.util.List;
  * @author laodeng
  * @version v1.0
  * @date 2026/7/26 10:33
- * @description
+ * @description 用户VO类
  */
 
 @Data

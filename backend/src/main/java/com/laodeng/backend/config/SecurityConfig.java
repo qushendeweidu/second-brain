@@ -19,6 +19,13 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * @author laodeng
+ * @version v1.0
+ * @date 2026/7/28 11:52
+ * @description security配置
+ */
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
