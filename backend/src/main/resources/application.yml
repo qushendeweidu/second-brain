@@ -88,6 +88,13 @@ frontend:
   url: ${FRONTEND_URL}
   max-age: ${FRONTEND_MAX_AGE}
 
+minio:
+  endpoint: http://${MINIO_HOST}:${MINIO_API_PORT}
+  fileHost: http://${MINIO_HOST}:${MINIO_API_PORT}
+  bucketName: ${MINIO_BUCKET_NAME}
+  accessKey: ${MINIO_ROOT_USER}
+  secretKey: ${MINIO_ROOT_PASSWORD}
+
 server:
   port: 8808
 
