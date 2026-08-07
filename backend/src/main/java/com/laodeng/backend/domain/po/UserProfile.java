@@ -3,7 +3,6 @@ package com.laodeng.backend.domain.po;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,8 +16,8 @@ import java.time.LocalDateTime;
 /**
  * @author laodeng
  * @version v1.0
- * @date 2026/7/26 09:41
- * @description 用户实体类
+ * @date 2026/8/5 23:01
+ * @description 用户配置文件类
  */
 
 @Data
@@ -26,34 +25,19 @@ import java.time.LocalDateTime;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName(value = "user" , autoResultMap = true)
-public class User {
-
+@TableName(value = "user_profile", autoResultMap = true)
+public class UserProfile {
     @TableId
     private Long id;
-
-    @TableField("username")
-    private String username;
-
-    @TableField("password")
-    private String password;
-
-    @TableField("nickname")
-    private String nickName;
-
-    @TableField("email")
-    private String email;
-
-    @TableField("phone")
-    private String phone;
-
-    @TableField("status")
-    private Integer status;
-
-    @TableField(value = "create_time")
+    @TableField("user_id")
+    private Long userId;
+    @TableField("avatar")
+    private String avatar;
+    @TableField("bio")
+    private String bio;
+    @TableField("create_time")
     private LocalDateTime createTime;
-
-    @TableField(value = "update_time")
+    @TableField("update_time")
     private LocalDateTime updateTime;
 
 }

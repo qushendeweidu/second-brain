@@ -32,8 +32,9 @@ public enum ErrorCode {
     REGISTER_ERROR(40202, "注册失败"),
     USER_NOT_FOUND_ERROR(40203, "用户不存在"),
     PASSWORD_ERROR(40204, "密码错误"),
-    USER_UPDATE_ERROR(40204, "用户信息更新失败"),
-
+    USER_UPDATE_ERROR(40205, "用户信息更新失败"),
+    USER_NAME_REPEAT(40206,"用户名重复"),
+    USER_BLOCKED(40207,"账户已被封禁"),
     // ==================== 客户端错误 - 文件模块 (403xx) ====================
     UPLOAD_ERROR(40301, "文件上传失败"),
     DOWNLOAD_ERROR(40302, "文件下载失败"),

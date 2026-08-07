@@ -1,11 +1,16 @@
 package com.laodeng.backend.handler;
 
+import com.laodeng.backend.common.ErrorCode;
+import com.laodeng.backend.exception.BusinessException;
+import com.laodeng.backend.exception.ThrowUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -18,6 +23,21 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class RedisSecurityHandle {
     private final RedisTemplate<String, String> securityRedisTemplate;
+    private static final DefaultRedisScript<Long> CREATE_SECURITY_KEY_SCRIPT = new DefaultRedisScript<>();
+    private static final String BLOCKED_FLAG = "0";
+    private static final long TOKEN_TTL_SECONDS = 30L * 24 * 60 * 60;
+
+    static {
+        //使用内置的Lua语言实现操作原子性
+        CREATE_SECURITY_KEY_SCRIPT.setScriptText(
+                "local current = redis.call('GET', KEYS[1])\n"
+                        + "if current == ARGV[1] then\n"
+                        + "    return 0\n"
+                        + "end\n"
+                        + "redis.call('SET', KEYS[1], ARGV[2], 'EX', " + TOKEN_TTL_SECONDS + ")\n"
+                        + "return 1");
+        CREATE_SECURITY_KEY_SCRIPT.setResultType(Long.class);
+    }
 
     @Autowired
     public RedisSecurityHandle(@Qualifier("securityRedisTemplate") RedisTemplate<String, String> securityRedisTemplate) {
@@ -32,8 +52,17 @@ public class RedisSecurityHandle {
     public void createSecurityKey(String key, String value) {
         try{
             key = decorateKey(key);
-            this.securityRedisTemplate.opsForValue().set(key, value,30, TimeUnit.DAYS);
-        } catch (Exception e) {
+            Long result = this.securityRedisTemplate.execute(
+                    CREATE_SECURITY_KEY_SCRIPT,
+                    List.of(key),
+                    BLOCKED_FLAG,   // ARGV[1]
+                    value);         // ARGV[2]
+            ThrowUtils.throwIf(result != null && result == 0L, ErrorCode.USER_BLOCKED);
+        }
+        catch (BusinessException e) {
+            throw e;
+        }
+        catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

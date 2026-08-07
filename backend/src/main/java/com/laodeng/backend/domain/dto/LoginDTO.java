@@ -17,7 +17,7 @@ import java.io.Serializable;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class LoginDTO implements Serializable {
+public class LoginDTO {
     // 用户名
     @NotNull
     private String username;

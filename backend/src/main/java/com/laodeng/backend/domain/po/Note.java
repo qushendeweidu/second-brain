@@ -9,6 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -25,7 +27,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @TableName(value = "note" , autoResultMap = true)
 public class Note {
-
     @TableId
     private Long id;
 

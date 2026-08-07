@@ -20,6 +20,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -41,6 +42,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final UserService userService;
     private final RedisSecurityHandle redisSecurityHandle;
 
+    private static final List<String> WHITE_LIST = List.of("/user/login", "/user/register","/file/**","/favicon.ico");
+    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -48,29 +52,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Long startTime = System.currentTimeMillis();
         try {
             String token = request.getHeader("Authorization"); // 从请求头中获取token
-            ThrowUtils.throwIf(token.split("\\.").length>3,new BusinessException(ErrorCode.TOKEN_ERROR));
             if (token == null || token.isEmpty()) {
-                log.info("用户Token无效");
-                throw new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效");
+                log.info("用户Token为空");
+                throw new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token为空");
             }
+            ThrowUtils.throwIf(token.split("\\.").length>3,new BusinessException(ErrorCode.TOKEN_ERROR));
             Long userId = this.jwtUtils.extractId(token); // 从token中提取用户id
+            ThrowUtils.throwIf(userId == null, new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));
             // 首先判断当前redis是否存在该用户的JWT如果不存在就抛出异常让前端去跳转登录页面
-            ThrowUtils.throwIf(!this.redisSecurityHandle.checkSecurityKey(userId.toString()), new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token不存在"));
-            if (!this.jwtUtils.isTokenValid(token)) {
+            if (
+                    !this.jwtUtils.isTokenValid(token)
+                    || !this.redisSecurityHandle.getSecurityKey(userId.toString()).equals(token)
+            ) {
                 log.info("用户Token过期");
                 User user = this.userService.getById(userId);
-                if (ObjUtil.isNull(user)) {
-                    log.info("用户不存在");
-                    throw new BusinessException(ErrorCode.USER_NOT_FOUND_ERROR, "用户不存在");
+                if (ObjUtil.isNull(user) || user.getStatus().equals(0)) {
+                    log.info("用户不存在或者已经被封号");
+                    throw new BusinessException(ErrorCode.USER_NOT_FOUND_ERROR, "用户不存在或者已经被封号");
                 } else if (ObjUtil.equals(user.getId(), userId)) {
                     log.info("用户确实存在开始创建新的jwt");
                     token = this.jwtUtils.createToken(userId);
                     this.redisSecurityHandle.createSecurityKey(userId.toString(), token);
-                } else {
-                    throw new BusinessException(ErrorCode.USER_NOT_FOUND_ERROR, "用户不存在");
                 }
             }
-            log.info("当前Token: {}", token);
             List<GrantedAuthority> authorities = new ArrayList<>();
             // 从token中获取用户角色
             this.jwtUtils.extractRoles(token).forEach(
@@ -80,16 +84,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             this.jwtUtils.extractPermissions(token).forEach(
                     permission -> authorities.add(new SimpleGrantedAuthority(permission))
             );
-            // 创建Authentication对象
-            Authentication authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities);
-            // 将Authentication对象设置到SecurityContextHolder中
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+            Authentication authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities); // 创建Authentication对象
+            SecurityContextHolder.getContext().setAuthentication(authentication);// 将Authentication对象设置到SecurityContextHolder中
             request.setAttribute("userId", userId); //将当前的用户id存入到请求中
+            response.setHeader("Authorization", token); // 在拦截器或全局跨域配置中，允许前端读取 Authorization 响应头
             filterChain.doFilter(request, response);
-        } finally {
+        }catch (BusinessException e) {
+            throw e;
+        }finally {
             log.info("请求执行完毕请求耗时: {} ms", System.currentTimeMillis() - startTime);
             log.info("当前线程: {} 请求完毕清除线程数据", Thread.currentThread().getName());
         }
     }
 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        return WHITE_LIST.stream().anyMatch(p -> pathMatcher.match(p, path));
+    }
 }

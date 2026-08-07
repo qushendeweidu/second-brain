@@ -23,9 +23,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Accessors(chain = true)
-public class UserVO implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class UserVO{
+
+    private Long id;
 
     private String username;
 
@@ -36,6 +36,8 @@ public class UserVO implements Serializable {
     private String phone;
 
     private Integer status;
+
+    private String avatar;
 
     private List<String> roles;
 

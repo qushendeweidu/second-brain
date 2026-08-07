@@ -3,20 +3,28 @@ package com.laodeng.backend.controller;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.common.R;
 import com.laodeng.backend.domain.dto.LoginDTO;
+import com.laodeng.backend.domain.dto.UserCreateDTO;
 import com.laodeng.backend.domain.dto.UserDTO;
+import com.laodeng.backend.domain.dto.UserProfileCreateDTO;
+import com.laodeng.backend.domain.dto.UserProfileUpdateDTO;
+import com.laodeng.backend.domain.dto.UserRoleUpdateDTO;
+import com.laodeng.backend.domain.dto.UserUpdateDTO;
+import com.laodeng.backend.domain.vo.UserProfileVO;
+import com.laodeng.backend.domain.vo.UserRoleVO;
 import com.laodeng.backend.domain.vo.UserVO;
 import com.laodeng.backend.exception.ThrowUtils;
+import com.laodeng.backend.service.UserProfileService;
+import com.laodeng.backend.service.UserRoleService;
 import com.laodeng.backend.service.UserService;
 import com.laodeng.backend.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -31,21 +39,225 @@ import java.util.List;
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
+@Validated
 public class UserController {
     private final UserService userService;
+    private final UserRoleService userRoleService;
+    private final UserProfileService  userProfileService;
+    private final JwtUtils jwtUtils;
 
+    /**
+     * 登陆接口
+     * @param loginDTO
+     * @return
+     */
     @PostMapping("/login")
     public R<String> login(@RequestBody @Validated LoginDTO loginDTO) {
         String isLogin = this.userService.login(loginDTO);
-        ThrowUtils.throwIf(isLogin==null, ErrorCode.OPERATION_ERROR);
+        ThrowUtils.throwIf(isLogin==null, ErrorCode.PASSWORD_ERROR);
         return R.success(isLogin);
     }
 
+    /**
+     * 注册接口
+     * @param loginDTO
+     */
+    @PostMapping("/register")
+    public void register(@RequestBody @Validated LoginDTO loginDTO) {
+        this.userService.register(loginDTO);
+    }
+
+    /**
+     * 查询用户数据
+     * @param userDTO
+     * @return
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/list")
     public R<List<UserVO>> getUserVOByUserDTO(@RequestBody UserDTO userDTO) {
         List<UserVO> userVOByUserDTO = this.userService.getUserVOByUserDTO(userDTO);
         return R.success(userVOByUserDTO);
+    }
+
+    /**
+     * 根据id查询
+     * @param id
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}")
+    public R<UserVO> getUserById(@PathVariable Long id) {
+        return R.success(this.userService.getUserVOById(id));
+    }
+
+
+    /**
+     * 管理员创建用户
+     * @param userCreateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/create")
+    public R<Long> createUser(@Valid @RequestBody UserCreateDTO userCreateDTO) {
+        return R.success(this.userService.createUser(userCreateDTO));
+    }
+
+    /**
+     * 更新用户
+     * @param userUpdateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/update")
+    public R<Boolean> updateUser(@Valid @RequestBody UserUpdateDTO userUpdateDTO) {
+        return R.success(this.userService.updateUser(userUpdateDTO));
+    }
+
+    /**
+     * 删除用户
+     * @param id
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public R<Void> deleteUser(@PathVariable Long id) {
+        this.userService.deleteUser(id);
+        return R.success();
+    }
+
+    /**
+     * 获取权限
+     * @param userId
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/role/{userId}")
+    public R<UserRoleVO> getUserRole(@PathVariable Long userId) {
+        return R.success(this.userRoleService.getUserRoleByUserId(userId));
+    }
+
+    /**
+     * 获取所有权限
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/role/list")
+    public R<List<UserRoleVO>> listUserRoles() {
+        return R.success(this.userRoleService.listUserRoles());
+    }
+
+    /**
+     * 创建用户权限
+     * @param userRoleUpdateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/role")
+    public R<Long> createUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
+        return R.success(this.userRoleService.createUserRole(userRoleUpdateDTO));
+    }
+
+    /**
+     * 更新用户权限
+     * @param userRoleUpdateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/role")
+    public R<Boolean> updateUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
+        return R.success(this.userRoleService.updateUserRole(userRoleUpdateDTO));
+    }
+
+    /**
+     * 删除用户权限
+     * @param userId
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/role/{userId}")
+    public R<Void> deleteUserRole(@PathVariable Long userId) {
+        this.userRoleService.deleteUserRole(userId);
+        return R.success();
+    }
+
+    /**
+     * 获取用户配置文件类
+     * @param userId
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/profile/{userId}")
+    public R<UserProfileVO> getUserProfile(@PathVariable Long userId, HttpServletRequest request) {
+        return R.success(this.userProfileService.getUserProfileByUserId(userId, request));
+    }
+
+    /**
+     * 获取所有人的配置文件类
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/profile/list")
+    public R<List<UserProfileVO>> listUserProfiles(HttpServletRequest request) {
+        return R.success(this.userProfileService.listUserProfiles(request));
+    }
+
+
+    /**
+     * 创建用户配置文件类
+     * @param userProfileCreateDTO
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @PostMapping("/profile")
+    public R<Long> createUserProfile(
+            @Valid @RequestBody UserProfileCreateDTO userProfileCreateDTO,
+            HttpServletRequest request
+    ) {
+        return R.success(this.userProfileService.createUserProfile(userProfileCreateDTO, request));
+    }
+
+
+    /**
+     * 删除用户配置文件类
+     * @param userId
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @DeleteMapping("/profile/{userId}")
+    public R<Void> deleteUserProfile(@PathVariable Long userId, HttpServletRequest request) {
+        this.userProfileService.deleteUserProfile(userId, request);
+        return R.success();
+    }
+
+    /**
+     * 保存用户头像
+     * @param multipartFile
+     * @param request
+     * @param userId
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @PostMapping("/saveUserAvatar")
+    public R<String> saveUserAvatar(MultipartFile multipartFile, HttpServletRequest request, Long userId) {
+        String avatarUrl = this.userProfileService.saveUserAvatar(multipartFile, userId, request);
+        ThrowUtils.throwIf(avatarUrl == null || avatarUrl.isEmpty(), ErrorCode.UPLOAD_ERROR, "上传头像失败");
+        return R.success(avatarUrl);
+    }
+
+    /**
+     * 更新用户配置文件
+     * @param userProfileUpdateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @PatchMapping("/updateUserProfile")
+    public R<Boolean> updateUserProfile(UserProfileUpdateDTO userProfileUpdateDTO,HttpServletRequest request) {
+        boolean result = this.userProfileService.updateUserProfile(userProfileUpdateDTO,request);
+        return R.success(result);
     }
 
 }

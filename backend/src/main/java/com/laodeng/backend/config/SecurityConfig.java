@@ -2,6 +2,7 @@ package com.laodeng.backend.config;
 
 import com.laodeng.backend.config.properties.FrontendProperties;
 import com.laodeng.backend.filter.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +12,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -31,8 +33,6 @@ import java.util.List;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-
-
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final FrontendProperties frontendProperties;
 
@@ -59,7 +59,9 @@ public class SecurityConfig {
                                 //登录接口放行
                                 .requestMatchers(
                                         "/user/login",
-                                        "/user/register"
+                                        "/user/register",
+                                        "/file/**",
+                                        "/favicon.ico"
                                 )
                                 .permitAll() //放行上面的这些请求路径
                                 //下面是包含所有的其他请求
@@ -86,12 +88,15 @@ public class SecurityConfig {
                         "GET",
                         "POST",
                         "PUT",
+                        "PATCH",
                         "DELETE",
                         "OPTIONS"
                 )
         );
         // 请求头
         config.setAllowedHeaders(List.of("*"));
+        // 统一配置暴露哪些响应头给前端，前端 Axios 就能无缝读取了
+        config.setExposedHeaders(List.of("Authorization"));
         config.setMaxAge(frontendProperties.getMaxAge());
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

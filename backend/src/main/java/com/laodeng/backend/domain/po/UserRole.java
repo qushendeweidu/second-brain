@@ -28,15 +28,12 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName(value = "user_role", autoResultMap = true)
-public class UserRole implements Serializable {
-    @Serial
-    private static final long serialVersionUID = 1L;
+public class UserRole {
     @TableId
     private Long id;
     @TableField(value = "user_id")
     private Long userId;
     @TableField(value = "roles", typeHandler = JacksonTypeHandler.class)
-
     private List<String> roles;
     @TableField(value = "permissions", typeHandler = JacksonTypeHandler.class)
     private List<String> permissions;

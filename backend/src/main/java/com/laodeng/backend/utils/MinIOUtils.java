@@ -10,8 +10,9 @@ import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
 import jakarta.annotation.PostConstruct;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -31,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  */
 
 @Slf4j
-@RequiredArgsConstructor
+@Component
 public class MinIOUtils {
     private final MinIOProperties minIOProperties;
     /** MinIO 官方 SDK 客户端，线程安全，整个应用复用一个实例 */
@@ -39,10 +40,17 @@ public class MinIOUtils {
     private MinioClient client;
 
     /** 对象名按日期分目录，避免单目录文件爆量 */
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+    private final DateTimeFormatter DATE_FMT;
 
     /** 流式上传分片大小（5 MB），仅在文件大小未知时启用 */
-    private static final long PART_SIZE = 5L * 1024 * 1024;
+    private final long PART_SIZE;
+
+    @Autowired
+    public MinIOUtils(MinIOProperties minIOProperties) {
+        this.minIOProperties = minIOProperties;
+        this.DATE_FMT = DateTimeFormatter.ofPattern("yyyy/MM/dd");
+        this.PART_SIZE = 5L * 1024 * 1024;
+    }
 
     // ============================================================
     //  初始化
@@ -51,11 +59,11 @@ public class MinIOUtils {
     @PostConstruct
     public void init() {
         this.client = MinioClient.builder()
-                .endpoint(minIOProperties.getEndpoint())
-                .credentials(minIOProperties.getAccessKey(), minIOProperties.getSecretKey())
+                .endpoint(this.minIOProperties.getEndpoint())
+                .credentials(this.minIOProperties.getAccessKey(), this.minIOProperties.getSecretKey())
                 .build();
-        ensureBucket(minIOProperties.getBucketName());
-        log.info("[MinIO] 初始化完成, defaultBucket={}", minIOProperties.getBucketName());
+        ensureBucket(this.minIOProperties.getBucketName());
+        log.info("[MinIO] 初始化完成, defaultBucket={}", this.minIOProperties.getBucketName());
     }
 
     // ============================================================
@@ -63,10 +71,10 @@ public class MinIOUtils {
     // ============================================================
     public void ensureBucket(String bucket) {
         try {
-            boolean exists = client.bucketExists(
+            boolean exists = this.client.bucketExists(
                     BucketExistsArgs.builder().bucket(bucket).build());
             if (!exists) {
-                client.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
+                this.client.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
                 log.info("[MinIO] 已创建桶: {}", bucket);
             }
         } catch (Exception e) {
@@ -84,7 +92,7 @@ public class MinIOUtils {
      *
      * @return 对象名（桶内相对路径），用于后续拼接 URL 或落库
      */
-    public String upload(MultipartFile file) {
+    public String uploadFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "上传文件不能为空");
         }
@@ -103,10 +111,10 @@ public class MinIOUtils {
      */
     public String upload(InputStream in, String objectName, String contentType, long size) {
         try {
-            client.putObject(PutObjectArgs.builder()
-                    .bucket(minIOProperties.getBucketName())
+            this.client.putObject(PutObjectArgs.builder()
+                    .bucket(this.minIOProperties.getBucketName())
                     .object(objectName)
-                    .stream(in, size, size > 0 ? -1 : PART_SIZE)
+                    .stream(in, size, size > 0 ? -1 : this.PART_SIZE)
                     .contentType(contentType != null ? contentType : "application/octet-stream")
                     .build());
             return objectName;
@@ -122,8 +130,8 @@ public class MinIOUtils {
     /** 删除单个对象 */
     public void delete(String objectName) {
         try {
-            client.removeObject(RemoveObjectArgs.builder()
-                    .bucket(minIOProperties.getBucketName())
+            this.client.removeObject(RemoveObjectArgs.builder()
+                    .bucket(this.minIOProperties.getBucketName())
                     .object(objectName)
                     .build());
         } catch (Exception e) {
@@ -142,9 +150,9 @@ public class MinIOUtils {
             return;
         }
         List<DeleteObject> targets = objectNames.stream().map(DeleteObject::new).toList();
-        Iterable<Result<DeleteError>> results = client.removeObjects(
+        Iterable<Result<DeleteError>> results = this.client.removeObjects(
                 RemoveObjectsArgs.builder()
-                        .bucket(minIOProperties.getBucketName())
+                        .bucket(this.minIOProperties.getBucketName())
                         .objects(targets)
                         .build());
         try {
@@ -166,7 +174,7 @@ public class MinIOUtils {
      * 获取当前文件在minio的url
      */
     public String getFileUrl(String objectName) {
-        return minIOProperties.getFileHost() + "/" + minIOProperties.getBucketName() + "/" + objectName;
+        return this.minIOProperties.getFileHost() + "/" + this.minIOProperties.getBucketName() + "/" + objectName;
     }
 
     /**
@@ -174,9 +182,9 @@ public class MinIOUtils {
      */
     public String getPresignedUrl(String objectName, int expireMinutes) {
         try {
-            return client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+            return this.client.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                     .method(Method.GET)
-                    .bucket(minIOProperties.getBucketName())
+                    .bucket(this.minIOProperties.getBucketName())
                     .object(objectName)
                     .expiry(expireMinutes, TimeUnit.MINUTES)
                     .build());
@@ -185,14 +193,17 @@ public class MinIOUtils {
         }
     }
 
-    // ============================================================
-    //  获取的是当前存储的信息
-    // ============================================================
+    /**
+     * 获取的是当前存储的信息
+     *
+     * @param prefix
+     * @return
+     */
     public List<String> listObjects(String prefix) {
         List<String> names = new ArrayList<>();
         try {
-            Iterable<Result<Item>> results = client.listObjects(ListObjectsArgs.builder()
-                    .bucket(minIOProperties.getBucketName())
+            Iterable<Result<Item>> results = this.client.listObjects(ListObjectsArgs.builder()
+                    .bucket(this.minIOProperties.getBucketName())
                     .prefix(prefix)
                     .recursive(true)
                     .build());
@@ -205,10 +216,6 @@ public class MinIOUtils {
         }
     }
 
-    // ============================================================
-    //  生成不会重复的文件名
-    // ============================================================
-
     /**
      * 通过原始文件名获取文件后缀之后根据当前时间和UUID结合防止文件名重复，返回文件名
      */
@@ -220,7 +227,7 @@ public class MinIOUtils {
                 ext = originalFilename.substring(dot);
             }
         }
-        return DATE_FMT.format(LocalDate.now())
+        return this.DATE_FMT.format(LocalDate.now())
                 + "/" + UUID.randomUUID().toString().replace("-", "")
                 + ext;
     }

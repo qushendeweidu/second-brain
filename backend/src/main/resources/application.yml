@@ -37,7 +37,7 @@ mybatis-plus:
       insert-strategy: NOT_NULL
       update-strategy: NOT_NULL
 jwt:
-  secret: 2swDnoE_Nv+1QRs?+4-ZHG+M!TZ*tfHXCmMYyCo^VzD161LUi-fHwb2}ftDx
+  secret: ${JWT_SECRET}
   expiration: 2592000000
   issuer: second-brain
 

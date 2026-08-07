@@ -1,7 +1,11 @@
 package com.laodeng.backend.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
+import com.laodeng.backend.domain.dto.UserRoleUpdateDTO;
 import com.laodeng.backend.domain.po.UserRole;
+import com.laodeng.backend.domain.vo.UserRoleVO;
+
+import java.util.List;
 
 /**
  * @author laodeng
@@ -11,4 +15,14 @@ import com.laodeng.backend.domain.po.UserRole;
  */
 
 public interface UserRoleService extends IService<UserRole> {
+
+    UserRoleVO getUserRoleByUserId(Long userId);
+
+    List<UserRoleVO> listUserRoles();
+
+    Long createUserRole(UserRoleUpdateDTO userRoleUpdateDTO);
+
+    boolean updateUserRole(UserRoleUpdateDTO userRoleUpdateDTO);
+
+    void deleteUserRole(Long userId);
 }

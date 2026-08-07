@@ -105,8 +105,6 @@ public class JwtUtils {
     public Claims extractAndReturnClaims(String token) {
         // 尝试提取token中的所有声明（Claims）
         try {
-            // 当前JWT的token
-            log.info("Token:{}", token);
             // 使用JWT库解析token
             return Jwts.parser()
                     .verifyWith(this.secretKey) // 设置密钥
