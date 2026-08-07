@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -50,7 +51,17 @@ public class RedisSecurityHandle {
      * @param value
      */
     public void createSecurityKey(String key, String value) {
-        try{
+        createSecurityKey(key, value, null);
+    }
+
+    /**
+     * 创建令牌时修改过期时间
+     * @param key
+     * @param value
+     * @param ttl
+     */
+    public void createSecurityKey(String key, String value, Duration ttl) {
+        try {
             key = decorateKey(key);
             Long result = this.securityRedisTemplate.execute(
                     CREATE_SECURITY_KEY_SCRIPT,
@@ -58,11 +69,9 @@ public class RedisSecurityHandle {
                     BLOCKED_FLAG,   // ARGV[1]
                     value);         // ARGV[2]
             ThrowUtils.throwIf(result != null && result == 0L, ErrorCode.USER_BLOCKED);
-        }
-        catch (BusinessException e) {
+        } catch (BusinessException e) {
             throw e;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

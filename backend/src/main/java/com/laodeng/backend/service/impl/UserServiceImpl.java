@@ -4,12 +4,10 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.laodeng.backend.common.ErrorCode;
-import com.laodeng.backend.domain.dto.LoginDTO;
-import com.laodeng.backend.domain.dto.UserCreateDTO;
-import com.laodeng.backend.domain.dto.UserDTO;
-import com.laodeng.backend.domain.dto.UserUpdateDTO;
+import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.po.UserProfile;
 import com.laodeng.backend.domain.po.UserRole;
@@ -23,9 +21,13 @@ import com.laodeng.backend.service.UserService;
 import com.laodeng.backend.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import lombok.val;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -191,6 +193,36 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .username(loginDTO.getUsername())
                 .password(loginDTO.getPassword())
                 .build());
+    }
+
+    /**
+     * 封禁帐户
+     * @param blockedUserDTO
+     */
+    @Override
+    public void blockedUser(BlockedUserDTO blockedUserDTO) {
+        ThrowUtils.throwIf(blockedUserDTO.getUserId() == null || ObjUtil.isEmpty(blockedUserDTO.getUserId()),ErrorCode.PARAMS_EMPTY_ERROR);
+        User user = this.getById(blockedUserDTO.getUserId());
+        ThrowUtils.throwIf(ObjUtil.isEmpty(user),ErrorCode.USER_NOT_FOUND_ERROR);
+        if (ObjUtil.isNotEmpty(blockedUserDTO.getBlockedTime())){
+            redisSecurityHandle.createSecurityKey(
+                    blockedUserDTO.getUserId().toString(),
+                    "0",
+                    Duration.between(LocalDateTime.now(), blockedUserDTO.getBlockedTime())
+            );
+        }
+        if (ObjUtil.isNotEmpty(blockedUserDTO.getBlocked()) && blockedUserDTO.getBlocked()){
+            if (ObjUtil.equal(user.getStatus(),0)){
+                log.info("当前账户已经被封禁");
+            }
+            LambdaUpdateWrapper<User> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
+            lambdaUpdateWrapper.eq(User::getId, blockedUserDTO.getUserId())
+                    .set(User::getStatus, 0);
+            if (this.update(lambdaUpdateWrapper)){
+                log.info("用户账户状态更新成功正在删除redis残余key");
+                redisSecurityHandle.deleteSecurityKey(user.getId().toString());
+            }
+        }
     }
 
     /**

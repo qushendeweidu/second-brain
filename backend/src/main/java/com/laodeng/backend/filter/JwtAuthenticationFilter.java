@@ -60,10 +60,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Long userId = this.jwtUtils.extractId(token); // 从token中提取用户id
             ThrowUtils.throwIf(userId == null, new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));
             // 首先判断当前redis是否存在该用户的JWT如果不存在就抛出异常让前端去跳转登录页面
-            if (
-                    !this.jwtUtils.isTokenValid(token)
-                    || !this.redisSecurityHandle.getSecurityKey(userId.toString()).equals(token)
-            ) {
+            String redisToken = redisSecurityHandle.getSecurityKey(userId.toString());
+            if (!jwtUtils.isTokenValid(token)
+                    || !ObjUtil.equals(redisToken, token)
+                    || redisToken == null) {
                 log.info("用户Token过期");
                 User user = this.userService.getById(userId);
                 if (ObjUtil.isNull(user) || user.getStatus().equals(0)) {

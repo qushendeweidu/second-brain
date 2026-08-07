@@ -1,10 +1,7 @@
 package com.laodeng.backend.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
-import com.laodeng.backend.domain.dto.LoginDTO;
-import com.laodeng.backend.domain.dto.UserCreateDTO;
-import com.laodeng.backend.domain.dto.UserDTO;
-import com.laodeng.backend.domain.dto.UserUpdateDTO;
+import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.vo.UserVO;
 
@@ -32,4 +29,6 @@ public interface UserService extends IService<User> {
     String login(LoginDTO loginDTO);
 
     void register(LoginDTO loginDTO);
+
+    void blockedUser(BlockedUserDTO userId);
 }

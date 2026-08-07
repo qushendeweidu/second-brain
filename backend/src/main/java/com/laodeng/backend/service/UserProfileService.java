@@ -23,7 +23,9 @@ public interface UserProfileService extends IService<UserProfile> {
 
     boolean updateUserProfile(UserProfileUpdateDTO userProfileUpdateDTO, HttpServletRequest request);
 
-    UserProfileVO getUserProfileByUserId(Long userId, HttpServletRequest request);
+    UserProfileVO getUserProfileByUserId(Long userId);
+
+    UserProfileVO getUserProfileBySelf(HttpServletRequest request);
 
     List<UserProfileVO> listUserProfiles(HttpServletRequest request);
 

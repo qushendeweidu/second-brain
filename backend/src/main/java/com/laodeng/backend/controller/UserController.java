@@ -2,13 +2,7 @@ package com.laodeng.backend.controller;
 
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.common.R;
-import com.laodeng.backend.domain.dto.LoginDTO;
-import com.laodeng.backend.domain.dto.UserCreateDTO;
-import com.laodeng.backend.domain.dto.UserDTO;
-import com.laodeng.backend.domain.dto.UserProfileCreateDTO;
-import com.laodeng.backend.domain.dto.UserProfileUpdateDTO;
-import com.laodeng.backend.domain.dto.UserRoleUpdateDTO;
-import com.laodeng.backend.domain.dto.UserUpdateDTO;
+import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.vo.UserProfileVO;
 import com.laodeng.backend.domain.vo.UserRoleVO;
 import com.laodeng.backend.domain.vo.UserVO;
@@ -46,6 +40,7 @@ public class UserController {
     private final UserProfileService  userProfileService;
     private final JwtUtils jwtUtils;
 
+    // ==================== 登陆注册部分 ====================
     /**
      * 登陆接口
      * @param loginDTO
@@ -63,8 +58,45 @@ public class UserController {
      * @param loginDTO
      */
     @PostMapping("/register")
-    public void register(@RequestBody @Validated LoginDTO loginDTO) {
+    public R<Void> register(@RequestBody @Validated LoginDTO loginDTO) {
         this.userService.register(loginDTO);
+        return R.success();
+    }
+
+    // ==================== 用户部分 ====================
+
+    /**
+     * 管理员创建用户
+     * @param userCreateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/create")
+    public R<Long> createUser(@Valid @RequestBody UserCreateDTO userCreateDTO) {
+        return R.success(this.userService.createUser(userCreateDTO));
+    }
+
+    /**
+     * 删除用户
+     * @param id
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public R<Void> deleteUser(@PathVariable Long id) {
+        this.userService.deleteUser(id);
+        return R.success();
+    }
+
+    /**
+     * 更新用户
+     * @param userUpdateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/update")
+    public R<Boolean> updateUser(@Valid @RequestBody UserUpdateDTO userUpdateDTO) {
+        return R.success(this.userService.updateUser(userUpdateDTO));
     }
 
     /**
@@ -89,41 +121,42 @@ public class UserController {
     public R<UserVO> getUserById(@PathVariable Long id) {
         return R.success(this.userService.getUserVOById(id));
     }
-
+    // ==================== 用户权限部分 ====================
 
     /**
-     * 管理员创建用户
-     * @param userCreateDTO
+     * 创建用户权限
+     * @param userRoleUpdateDTO
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/create")
-    public R<Long> createUser(@Valid @RequestBody UserCreateDTO userCreateDTO) {
-        return R.success(this.userService.createUser(userCreateDTO));
+    @PostMapping("/role")
+    public R<Long> createUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
+        return R.success(this.userRoleService.createUserRole(userRoleUpdateDTO));
     }
 
     /**
-     * 更新用户
-     * @param userUpdateDTO
+     * 删除用户权限
+     * @param userId
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/update")
-    public R<Boolean> updateUser(@Valid @RequestBody UserUpdateDTO userUpdateDTO) {
-        return R.success(this.userService.updateUser(userUpdateDTO));
-    }
-
-    /**
-     * 删除用户
-     * @param id
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/{id}")
-    public R<Void> deleteUser(@PathVariable Long id) {
-        this.userService.deleteUser(id);
+    @DeleteMapping("/role/{userId}")
+    public R<Void> deleteUserRole(@PathVariable Long userId) {
+        this.userRoleService.deleteUserRole(userId);
         return R.success();
     }
+
+    /**
+     * 更新用户权限
+     * @param userRoleUpdateDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PatchMapping("/role")
+    public R<Boolean> updateUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
+        return R.success(this.userRoleService.updateUserRole(userRoleUpdateDTO));
+    }
+
 
     /**
      * 获取权限
@@ -146,63 +179,7 @@ public class UserController {
         return R.success(this.userRoleService.listUserRoles());
     }
 
-    /**
-     * 创建用户权限
-     * @param userRoleUpdateDTO
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/role")
-    public R<Long> createUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
-        return R.success(this.userRoleService.createUserRole(userRoleUpdateDTO));
-    }
-
-    /**
-     * 更新用户权限
-     * @param userRoleUpdateDTO
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PatchMapping("/role")
-    public R<Boolean> updateUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
-        return R.success(this.userRoleService.updateUserRole(userRoleUpdateDTO));
-    }
-
-    /**
-     * 删除用户权限
-     * @param userId
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @DeleteMapping("/role/{userId}")
-    public R<Void> deleteUserRole(@PathVariable Long userId) {
-        this.userRoleService.deleteUserRole(userId);
-        return R.success();
-    }
-
-    /**
-     * 获取用户配置文件类
-     * @param userId
-     * @param request
-     * @return
-     */
-    @PreAuthorize("hasRole('USER')")
-    @GetMapping("/profile/{userId}")
-    public R<UserProfileVO> getUserProfile(@PathVariable Long userId, HttpServletRequest request) {
-        return R.success(this.userProfileService.getUserProfileByUserId(userId, request));
-    }
-
-    /**
-     * 获取所有人的配置文件类
-     * @param request
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/profile/list")
-    public R<List<UserProfileVO>> listUserProfiles(HttpServletRequest request) {
-        return R.success(this.userProfileService.listUserProfiles(request));
-    }
-
+    // ==================== 用户配置文件部分 ====================
 
     /**
      * 创建用户配置文件类
@@ -218,8 +195,6 @@ public class UserController {
     ) {
         return R.success(this.userProfileService.createUserProfile(userProfileCreateDTO, request));
     }
-
-
     /**
      * 删除用户配置文件类
      * @param userId
@@ -258,6 +233,55 @@ public class UserController {
     public R<Boolean> updateUserProfile(UserProfileUpdateDTO userProfileUpdateDTO,HttpServletRequest request) {
         boolean result = this.userProfileService.updateUserProfile(userProfileUpdateDTO,request);
         return R.success(result);
+    }
+
+    /**
+     * 获取自身的用户配置文件
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @GetMapping("/profile/myself")
+    public R<UserProfileVO> getUserProfileBySelf(HttpServletRequest request) {
+        return R.success(this.userProfileService.getUserProfileBySelf(request));
+    }
+
+    /**
+     * 根据用户id查询配置文件
+     * @param userId
+     * @return
+     */
+    @
+    PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/profile/{userId}")
+    public R<UserProfileVO> getUserProfileByUserId(@PathVariable  Long userId) {
+        return R.success(this.userProfileService.getUserProfileByUserId(userId));
+    }
+
+
+    /**
+     * 获取所有人的配置文件类
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/profile/list")
+    public R<List<UserProfileVO>> listUserProfiles(HttpServletRequest request) {
+        return R.success(this.userProfileService.listUserProfiles(request));
+    }
+
+    // ==================== 账户封禁部分 ====================
+
+    /**
+     * 封禁帐户
+     * @param blockedUserDTO
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/blockedUser")
+    public R<Void> blockedUser(@RequestBody BlockedUserDTO  blockedUserDTO) {
+        this.userService.blockedUser(blockedUserDTO);
+        return R.success();
     }
 
 }

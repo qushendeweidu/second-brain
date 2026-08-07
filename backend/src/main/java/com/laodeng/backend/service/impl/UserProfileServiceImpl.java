@@ -62,9 +62,18 @@ public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserP
         return true;
     }
 
+
     @Override
-    public UserProfileVO getUserProfileByUserId(Long userId, HttpServletRequest request) {
-        checkManagePermission(userId, request);
+    public UserProfileVO getUserProfileByUserId(Long userId) {
+        ThrowUtils.throwIf(userId == null || ObjUtil.isEmpty(userId), ErrorCode.PARAMS_ERROR);
+        return toVO(getProfile(userId));
+    }
+
+    @Override
+    public UserProfileVO getUserProfileBySelf(HttpServletRequest request) {
+        String token = request.getHeader("Authorization");
+        ThrowUtils.throwIf(token == null || token.isEmpty(), ErrorCode.TOKEN_ERROR);
+        Long userId = this.jwtUtils.extractId(token);
         return toVO(getProfile(userId));
     }
 
@@ -146,6 +155,11 @@ public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserP
         ThrowUtils.throwIf(!isAdmin(token), ErrorCode.NO_AUTH_ERROR);
     }
 
+    /**
+     * 确认当前token是否为admin权限
+     * @param token
+     * @return
+     */
     private boolean isAdmin(String token) {
         List<String> roles = this.jwtUtils.extractRoles(token);
         return roles != null && roles.contains("ADMIN");
