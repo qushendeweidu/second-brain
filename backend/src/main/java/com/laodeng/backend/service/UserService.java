@@ -31,4 +31,6 @@ public interface UserService extends IService<User> {
     void register(LoginDTO loginDTO);
 
     void blockedUser(BlockedUserDTO userId);
+
+    void deleteUserSecurity(Long userId);
 }

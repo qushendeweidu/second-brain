@@ -52,6 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         Long startTime = System.currentTimeMillis();
         try {
             String token = request.getHeader("Authorization"); // 从请求头中获取token
+            String tmpToken = token;
             if (token == null || token.isEmpty()) {
                 log.info("用户Token为空");
                 throw new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token为空");
@@ -75,6 +76,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     this.redisSecurityHandle.createSecurityKey(userId.toString(), token);
                 }
             }
+            ThrowUtils.throwIf(!ObjUtil.equal(tmpToken, token),ErrorCode.TOKEN_ERROR);
             List<GrantedAuthority> authorities = new ArrayList<>();
             // 从token中获取用户角色
             this.jwtUtils.extractRoles(token).forEach(

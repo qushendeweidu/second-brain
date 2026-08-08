@@ -21,7 +21,6 @@ import com.laodeng.backend.service.UserService;
 import com.laodeng.backend.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import lombok.val;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -237,6 +236,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return this.userMapper.getUserVOByUserDTO(userDTO);
     }
 
-
-
+    /**
+     * 删除用户的权限
+     * @param userId
+     */
+    @Override
+    public void deleteUserSecurity(Long userId) {
+        log.info("正在删除redis的权限数据");
+        this.redisSecurityHandle.deleteSecurityKey(userId.toString());
+    }
 }

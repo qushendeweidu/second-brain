@@ -284,4 +284,16 @@ public class UserController {
         return R.success();
     }
 
+    /**
+     * 删除redis中的权限数据
+     * @param userId
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/deleteUserSecurity/{userId}")
+    public R<Boolean> deleteUserSecurity(@PathVariable  Long userId) {
+        this.userService.deleteUserSecurity(userId);
+        return R.success(true);
+    }
+
 }
