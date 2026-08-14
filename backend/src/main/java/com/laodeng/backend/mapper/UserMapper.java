@@ -1,6 +1,8 @@
 package com.laodeng.backend.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.laodeng.backend.domain.dto.UserDTO;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.vo.UserVO;
@@ -16,5 +18,5 @@ import java.util.List;
  */
 
 public interface UserMapper extends BaseMapper<User> {
-    List<UserVO> getUserVOByUserDTO(@Param("userDTO") UserDTO userDTO);
+    IPage<UserVO> getUserVOByUserDTO(Page<UserVO> page, @Param("userDTO") UserDTO userDTO);
 }

@@ -18,8 +18,6 @@ public interface UserRoleService extends IService<UserRole> {
 
     UserRoleVO getUserRoleByUserId(Long userId);
 
-    List<UserRoleVO> listUserRoles();
-
     Long createUserRole(UserRoleUpdateDTO userRoleUpdateDTO);
 
     boolean updateUserRole(UserRoleUpdateDTO userRoleUpdateDTO);

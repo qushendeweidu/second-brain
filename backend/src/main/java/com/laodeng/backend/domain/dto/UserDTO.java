@@ -24,6 +24,8 @@ import java.util.List;
 @AllArgsConstructor
 public class UserDTO {
 
+    private PageDTO pageDTO;
+
     private String username;
 
     private String nickName;

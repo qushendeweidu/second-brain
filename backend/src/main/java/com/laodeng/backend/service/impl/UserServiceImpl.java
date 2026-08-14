@@ -5,8 +5,12 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.laodeng.backend.common.CustomPage;
 import com.laodeng.backend.common.ErrorCode;
+import com.laodeng.backend.common.PageResult;
 import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.po.UserProfile;
@@ -231,9 +235,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public List<UserVO> getUserVOByUserDTO(UserDTO userDTO) {
+    public PageResult<UserVO> getUserVOByUserDTO(UserDTO userDTO) {
         log.info("当前的请求体:{}", userDTO);
-        return this.userMapper.getUserVOByUserDTO(userDTO);
+        Page<UserVO> page = new CustomPage<>(
+                ObjUtil.isEmpty(userDTO.getPageDTO())  // 当前用户的pageDTO为空
+                        || userDTO.getPageDTO().getPageNum() == null  // 当前页码为空
+                        || userDTO.getPageDTO().getPageNum() < 1 // 当前页码小于1
+                        || userDTO.getPageDTO().getPageNum() > 100 // 当前页码大于100
+                        ? 1 : userDTO.getPageDTO().getPageNum(),
+                ObjUtil.isEmpty(userDTO.getPageDTO())  // 当前用户的pageDTO为空
+                        || userDTO.getPageDTO().getPageSize() == null // 当前每页数据量为空
+                        || userDTO.getPageDTO().getPageSize() < 1 //当前每页数据量小于1
+                        || userDTO.getPageDTO().getPageSize() > 100 // 当前每页数据量大于100
+                        ? 10 : userDTO.getPageDTO().getPageSize()
+        );
+        IPage<UserVO> iPage = this.userMapper.getUserVOByUserDTO(page, userDTO);
+        return PageResult.of(iPage.getRecords(), iPage.getTotal(), iPage.getCurrent(), iPage.getSize());
     }
 
     /**

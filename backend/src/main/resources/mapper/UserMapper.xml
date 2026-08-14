@@ -147,6 +147,7 @@
 
         </where>
 
+        ORDER BY u.id DESC
     </select>
 
 </mapper>

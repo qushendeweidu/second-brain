@@ -1,11 +1,10 @@
 package com.laodeng.backend.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
+import com.laodeng.backend.common.PageResult;
 import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.vo.UserVO;
-
-import java.util.List;
 
 /**
  * @author laodeng
@@ -16,7 +15,7 @@ import java.util.List;
 
 public interface UserService extends IService<User> {
 
-    List<UserVO> getUserVOByUserDTO(UserDTO userDTO);
+    PageResult<UserVO> getUserVOByUserDTO(UserDTO userDTO);
 
     UserVO getUserVOById(Long id);
 

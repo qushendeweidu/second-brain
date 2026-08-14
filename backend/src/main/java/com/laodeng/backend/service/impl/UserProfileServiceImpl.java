@@ -78,12 +78,6 @@ public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserP
     }
 
     @Override
-    public List<UserProfileVO> listUserProfiles(HttpServletRequest request) {
-        checkAdminPermission(request);
-        return this.list().stream().map(this::toVO).toList();
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createUserProfile(UserProfileCreateDTO userProfileCreateDTO, HttpServletRequest request) {
         Long userId = userProfileCreateDTO.getUserId();

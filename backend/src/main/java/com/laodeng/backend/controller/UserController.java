@@ -1,6 +1,7 @@
 package com.laodeng.backend.controller;
 
 import com.laodeng.backend.common.ErrorCode;
+import com.laodeng.backend.common.PageResult;
 import com.laodeng.backend.common.R;
 import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.vo.UserProfileVO;
@@ -76,6 +77,7 @@ public class UserController {
         return R.success(this.userService.createUser(userCreateDTO));
     }
 
+
     /**
      * 删除用户
      * @param id
@@ -106,8 +108,8 @@ public class UserController {
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/list")
-    public R<List<UserVO>> getUserVOByUserDTO(@RequestBody UserDTO userDTO) {
-        List<UserVO> userVOByUserDTO = this.userService.getUserVOByUserDTO(userDTO);
+    public R<PageResult<UserVO>> getUserVOByUserDTO(@RequestBody UserDTO userDTO) {
+        PageResult<UserVO> userVOByUserDTO = this.userService.getUserVOByUserDTO(userDTO);
         return R.success(userVOByUserDTO);
     }
 
@@ -167,16 +169,6 @@ public class UserController {
     @GetMapping("/role/{userId}")
     public R<UserRoleVO> getUserRole(@PathVariable Long userId) {
         return R.success(this.userRoleService.getUserRoleByUserId(userId));
-    }
-
-    /**
-     * 获取所有权限
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/role/list")
-    public R<List<UserRoleVO>> listUserRoles() {
-        return R.success(this.userRoleService.listUserRoles());
     }
 
     // ==================== 用户配置文件部分 ====================
@@ -252,22 +244,10 @@ public class UserController {
      * @return
      */
     @
-    PreAuthorize("hasRole('ADMIN')")
+            PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/profile/{userId}")
     public R<UserProfileVO> getUserProfileByUserId(@PathVariable  Long userId) {
         return R.success(this.userProfileService.getUserProfileByUserId(userId));
-    }
-
-
-    /**
-     * 获取所有人的配置文件类
-     * @param request
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/profile/list")
-    public R<List<UserProfileVO>> listUserProfiles(HttpServletRequest request) {
-        return R.success(this.userProfileService.listUserProfiles(request));
     }
 
     // ==================== 账户封禁部分 ====================

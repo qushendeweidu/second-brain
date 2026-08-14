@@ -42,11 +42,6 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleMapper, UserRole> i
     }
 
     @Override
-    public List<UserRoleVO> listUserRoles() {
-        return this.list().stream().map(this::toVO).toList();
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createUserRole(UserRoleUpdateDTO userRoleUpdateDTO) {
         ThrowUtils.throwIf(this.userMapper.selectById(userRoleUpdateDTO.getUserId()) == null,

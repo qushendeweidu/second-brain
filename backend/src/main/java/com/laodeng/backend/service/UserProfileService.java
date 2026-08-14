@@ -27,8 +27,6 @@ public interface UserProfileService extends IService<UserProfile> {
 
     UserProfileVO getUserProfileBySelf(HttpServletRequest request);
 
-    List<UserProfileVO> listUserProfiles(HttpServletRequest request);
-
     Long createUserProfile(UserProfileCreateDTO userProfileCreateDTO, HttpServletRequest request);
 
     void deleteUserProfile(Long userId, HttpServletRequest request);
