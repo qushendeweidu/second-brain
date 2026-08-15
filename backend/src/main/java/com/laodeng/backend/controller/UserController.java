@@ -21,8 +21,6 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
 /**
  * @author laodeng
  * @version v1.0
@@ -243,8 +241,7 @@ public class UserController {
      * @param userId
      * @return
      */
-    @
-            PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/profile/{userId}")
     public R<UserProfileVO> getUserProfileByUserId(@PathVariable  Long userId) {
         return R.success(this.userProfileService.getUserProfileByUserId(userId));
@@ -259,7 +256,7 @@ public class UserController {
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/blockedUser")
-    public R<Void> blockedUser(@RequestBody BlockedUserDTO  blockedUserDTO) {
+    public R<Void> blockedUser(@RequestBody @Validated BlockedUserDTO  blockedUserDTO) {
         this.userService.blockedUser(blockedUserDTO);
         return R.success();
     }

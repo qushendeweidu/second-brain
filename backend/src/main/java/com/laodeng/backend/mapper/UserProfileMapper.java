@@ -1,12 +1,7 @@
 package com.laodeng.backend.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.laodeng.backend.domain.dto.UserDTO;
 import com.laodeng.backend.domain.po.UserProfile;
-import com.laodeng.backend.domain.vo.UserVO;
-import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 /**
  * @author laodeng

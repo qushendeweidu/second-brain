@@ -1,9 +1,8 @@
 package com.laodeng.backend.utils;
 
-import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.laodeng.backend.common.ErrorCode;
-import com.laodeng.backend.common.R;
 import com.laodeng.backend.config.properties.JwtProperties;
 import com.laodeng.backend.domain.po.UserRole;
 import com.laodeng.backend.exception.ThrowUtils;
@@ -51,7 +50,7 @@ public class JwtUtils {
         LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserRole::getUserId, id);
         UserRole userRole = this.userRoleService.getOne(queryWrapper);
-        ThrowUtils.throwIf(userRole == null || ObjUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
+        ThrowUtils.throwIf(userRole == null || ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
         return Jwts.builder()
                 .header()
                 .type("JWT")
@@ -74,9 +73,9 @@ public class JwtUtils {
             if (subject == null || subject.isEmpty()) {
                 return null;
             }
-            Long Id = Long.valueOf(subject);
-            log.info("web_id:{}", Id);
-            return Id;
+            Long id = Long.valueOf(subject);
+            log.info("web_id:{}", id);
+            return id;
         } catch (Exception e) {
             log.debug("从令牌中提取WebId时发生异常", e);
             return null;

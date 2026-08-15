@@ -1,6 +1,6 @@
 package com.laodeng.backend.serializer;
 
-import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.ObjectUtil;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.extern.log4j.Log4j2;
@@ -39,7 +39,7 @@ public class GsonRedisSerializer<T> implements RedisSerializer<T> {
 
     @Override
     public @Nullable T deserialize(byte @Nullable [] bytes) throws SerializationException {
-        if (ObjUtil.isEmpty(bytes)){
+        if (ObjectUtil.isEmpty(bytes)) {
             return null;
         }
         String json = new String(bytes, StandardCharsets.UTF_8);

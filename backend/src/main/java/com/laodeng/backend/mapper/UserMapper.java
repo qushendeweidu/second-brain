@@ -8,8 +8,6 @@ import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.vo.UserVO;
 import org.apache.ibatis.annotations.Param;
 
-import java.util.List;
-
 /**
  * @author laodeng
  * @version v1.0

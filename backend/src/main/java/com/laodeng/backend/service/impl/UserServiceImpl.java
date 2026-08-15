@@ -1,7 +1,9 @@
 package com.laodeng.backend.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -25,12 +27,11 @@ import com.laodeng.backend.service.UserService;
 import com.laodeng.backend.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -51,6 +52,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private final JwtUtils jwtUtils;
     private final RedisSecurityHandle redisSecurityHandle;
     private final PasswordEncoder passwordEncoder;
+    @Lazy
+    private final UserService self;
     private static final String DEFAULT_ROLE = "USER";
     private static final String DEFAULT_PERMISSION = "user:read";
 
@@ -65,12 +68,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, loginDTO.getUsername());
         User user = this.getOne(queryWrapper);
-        ThrowUtils.throwIf(ObjUtil.isEmpty( user), ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty( user), ErrorCode.NOT_FOUND_ERROR);
         log.info("用户:{} 登陆", user.getUsername());
         String token = null;
         if (this.passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
             Long userId = user.getId();
-            if (this.redisSecurityHandle.checkSecurityKey(userId.toString())){
+            if (Boolean.TRUE.equals(this.redisSecurityHandle.checkSecurityKey(userId.toString()))){
                 token = this.redisSecurityHandle.getSecurityKey(userId.toString());
             }else {
                 token = this.jwtUtils.createToken(userId);
@@ -142,15 +145,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getById(userUpdateDTO.getId());
         ThrowUtils.throwIf(user == null, ErrorCode.USER_NOT_FOUND_ERROR);
 
-        if (StrUtil.isNotBlank(userUpdateDTO.getUsername())
-                && !ObjUtil.equal(user.getUsername(), userUpdateDTO.getUsername())) {
+        if (CharSequenceUtil.isNotBlank(userUpdateDTO.getUsername())
+                && !ObjectUtil.equal(user.getUsername(), userUpdateDTO.getUsername())) {
             long count = this.count(new LambdaQueryWrapper<User>()
                     .eq(User::getUsername, userUpdateDTO.getUsername())
                     .ne(User::getId, userUpdateDTO.getId()));
             ThrowUtils.throwIf(count > 0, ErrorCode.USER_NAME_REPEAT);
             user.setUsername(userUpdateDTO.getUsername());
         }
-        if (StrUtil.isNotBlank(userUpdateDTO.getPassword())) {
+        if (CharSequenceUtil.isNotBlank(userUpdateDTO.getPassword())) {
             user.setPassword(this.passwordEncoder.encode(userUpdateDTO.getPassword()));
         }
         if (userUpdateDTO.getNickName() != null) {
@@ -192,7 +195,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void register(LoginDTO loginDTO) {
-        this.createUser(UserCreateDTO.builder()
+        self.createUser(UserCreateDTO.builder()
                 .username(loginDTO.getUsername())
                 .password(loginDTO.getPassword())
                 .build());
@@ -204,18 +207,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public void blockedUser(BlockedUserDTO blockedUserDTO) {
-        ThrowUtils.throwIf(blockedUserDTO.getUserId() == null || ObjUtil.isEmpty(blockedUserDTO.getUserId()),ErrorCode.PARAMS_EMPTY_ERROR);
+        ThrowUtils.throwIf(blockedUserDTO.getUserId() == null || ObjectUtil.isEmpty(blockedUserDTO.getUserId()), ErrorCode.PARAMS_EMPTY_ERROR);
         User user = this.getById(blockedUserDTO.getUserId());
-        ThrowUtils.throwIf(ObjUtil.isEmpty(user),ErrorCode.USER_NOT_FOUND_ERROR);
-        if (ObjUtil.isNotEmpty(blockedUserDTO.getBlockedTime())){
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(user), ErrorCode.USER_NOT_FOUND_ERROR);
+        if (ObjectUtil.isNotEmpty(blockedUserDTO.getBlockedTime())) {
             redisSecurityHandle.createSecurityKey(
                     blockedUserDTO.getUserId().toString(),
                     "0",
-                    Duration.between(LocalDateTime.now(), blockedUserDTO.getBlockedTime())
+                    blockedUserDTO.getBlockedTime(),
+                    blockedUserDTO.getTimeUnit()
             );
         }
-        if (ObjUtil.isNotEmpty(blockedUserDTO.getBlocked()) && blockedUserDTO.getBlocked()){
-            if (ObjUtil.equal(user.getStatus(),0)){
+        if (ObjectUtil.isNotEmpty(blockedUserDTO.getBlocked()) && Boolean.TRUE.equals(blockedUserDTO.getBlocked())) {
+            if (ObjectUtil.equal(user.getStatus(), 0)) {
                 log.info("当前账户已经被封禁");
             }
             LambdaUpdateWrapper<User> lambdaUpdateWrapper = new LambdaUpdateWrapper<>();
@@ -238,12 +242,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public PageResult<UserVO> getUserVOByUserDTO(UserDTO userDTO) {
         log.info("当前的请求体:{}", userDTO);
         Page<UserVO> page = new CustomPage<>(
-                ObjUtil.isEmpty(userDTO.getPageDTO())  // 当前用户的pageDTO为空
+                ObjectUtil.isEmpty(userDTO.getPageDTO())  // 当前用户的pageDTO为空
                         || userDTO.getPageDTO().getPageNum() == null  // 当前页码为空
                         || userDTO.getPageDTO().getPageNum() < 1 // 当前页码小于1
                         || userDTO.getPageDTO().getPageNum() > 100 // 当前页码大于100
                         ? 1 : userDTO.getPageDTO().getPageNum(),
-                ObjUtil.isEmpty(userDTO.getPageDTO())  // 当前用户的pageDTO为空
+                ObjectUtil.isEmpty(userDTO.getPageDTO())  // 当前用户的pageDTO为空
                         || userDTO.getPageDTO().getPageSize() == null // 当前每页数据量为空
                         || userDTO.getPageDTO().getPageSize() < 1 //当前每页数据量小于1
                         || userDTO.getPageDTO().getPageSize() > 100 // 当前每页数据量大于100

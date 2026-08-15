@@ -8,8 +8,6 @@ import com.laodeng.backend.domain.vo.UserProfileVO;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-
 /**
  * @author laodeng
  * @version v1.0

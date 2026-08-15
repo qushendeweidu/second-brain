@@ -17,9 +17,9 @@ create table if not exists user
 
 -- 用户数据
 INSERT INTO user (id, username, password, nickname, email, phone, status)
-VALUES (1, 'admin', '123456', '超级管理员', 'admin@example.com', '13800000001', 1),
-       (2, 'zhangsan', '123456', '张三', 'zhangsan@example.com', '13800000002', 1),
-       (3, 'lisi', '123456', '李四', 'lisi@example.com', '13800000003', 1);
+VALUES (1, 'admin', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', '超级管理员', 'admin@example.com', '13800000001', 1),
+       (2, 'zhangsan', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', '张三', 'zhangsan@example.com', '13800000002', 1),
+       (3, 'lisi', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', '李四', 'lisi@example.com', '13800000003', 1);
 
 
 

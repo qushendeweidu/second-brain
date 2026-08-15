@@ -1,10 +1,11 @@
 package com.laodeng.backend.domain.dto;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author laodeng
@@ -18,9 +19,15 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class BlockedUserDTO {
     //用户id
+    @NotNull
     private Long userId;
-    //被封印的结束时间
-    private LocalDateTime  blockedTime;
+    // 封禁数字(具体时间单位由时间类型决定)
+    @NotNull
+    private Long blockedTime;
+    // 过期时间类型
+    @NotNull
+    private TimeUnit timeUnit;
     //是否永久封禁
+    @NotNull
     private Boolean blocked;
 }
