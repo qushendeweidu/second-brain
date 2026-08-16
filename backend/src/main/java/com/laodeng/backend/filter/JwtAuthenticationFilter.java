@@ -1,6 +1,6 @@
 package com.laodeng.backend.filter;
 
-import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.ObjectUtil;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.exception.BusinessException;
@@ -49,34 +49,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         log.info("当前线程: {}", Thread.currentThread().getName());
-        Long startTime = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         try {
             String token = request.getHeader("Authorization"); // 从请求头中获取token
-            String tmpToken = token;
             if (token == null || token.isEmpty()) {
                 log.info("用户Token为空");
                 throw new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token为空");
             }
+            String tmpToken = token;
             ThrowUtils.throwIf(token.split("\\.").length>3,new BusinessException(ErrorCode.TOKEN_ERROR));
             Long userId = this.jwtUtils.extractId(token); // 从token中提取用户id
             ThrowUtils.throwIf(userId == null, new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));
             // 首先判断当前redis是否存在该用户的JWT如果不存在就抛出异常让前端去跳转登录页面
             String redisToken = redisSecurityHandle.getSecurityKey(userId.toString());
-            if (!jwtUtils.isTokenValid(token)
-                    || !ObjUtil.equals(redisToken, token)
-                    || redisToken == null) {
-                log.info("用户Token过期");
+            if (!jwtUtils.isTokenValid(token) || !ObjectUtil.equals(redisToken, token)) {
+                log.info("用户Token出现问题正在排除");
                 User user = this.userService.getById(userId);
-                if (ObjUtil.isNull(user) || user.getStatus().equals(0)) {
+                if (ObjectUtil.isNull(user) || user.getStatus().equals(0)) {
                     log.info("用户不存在或者已经被封号");
                     throw new BusinessException(ErrorCode.USER_NOT_FOUND_ERROR, "用户不存在或者已经被封号");
-                } else if (ObjUtil.equals(user.getId(), userId)) {
+                } else if (jwtUtils.isTokenValid(token)) {
+                    log.info("当前用户的token可用即将覆盖redis的token");
+                    redisSecurityHandle.createSecurityKey(userId.toString(), token);
+                } else if (jwtUtils.isTokenValid(redisToken)) {
+                    log.info("当前用户的token已经不可用正在从redis中提取token覆盖当前的token");
+                    token = redisToken;
+                } else {
                     log.info("用户确实存在开始创建新的jwt");
                     token = this.jwtUtils.createToken(userId);
                     this.redisSecurityHandle.createSecurityKey(userId.toString(), token);
                 }
             }
-            ThrowUtils.throwIf(!ObjUtil.equal(tmpToken, token),ErrorCode.TOKEN_ERROR);
             List<GrantedAuthority> authorities = new ArrayList<>();
             // 从token中获取用户角色
             this.jwtUtils.extractRoles(token).forEach(
@@ -89,7 +92,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Authentication authentication = new UsernamePasswordAuthenticationToken(userId, null, authorities); // 创建Authentication对象
             SecurityContextHolder.getContext().setAuthentication(authentication);// 将Authentication对象设置到SecurityContextHolder中
             request.setAttribute("userId", userId); //将当前的用户id存入到请求中
-            response.setHeader("Authorization", token); // 在拦截器或全局跨域配置中，允许前端读取 Authorization 响应头
+            if (!ObjectUtil.equal(tmpToken, token)) {
+                response.setHeader("Authorization", token); // 在拦截器或全局跨域配置中，允许前端读取 Authorization 响应头
+            }
             filterChain.doFilter(request, response);
         }catch (BusinessException e) {
             throw e;
