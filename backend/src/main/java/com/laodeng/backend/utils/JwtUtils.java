@@ -34,7 +34,7 @@ import java.util.function.Function;
 public class JwtUtils {
     private final UserRoleService userRoleService;
     private final JwtProperties jwtProperties;
-    private final SecretKey secretKey;
+    private SecretKey secretKey;
 
     @Autowired
     public JwtUtils(UserRoleService userRoleService, JwtProperties jwtProperties) {
@@ -44,13 +44,13 @@ public class JwtUtils {
     }
 
     /**
-     * 创建Token
+     * 创建长时Token
      */
     public String createToken(Long id) {
         LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserRole::getUserId, id);
         UserRole userRole = this.userRoleService.getOne(queryWrapper);
-        ThrowUtils.throwIf(userRole == null || ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userRole) || ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
         return Jwts.builder()
                 .header()
                 .type("JWT")
@@ -60,13 +60,33 @@ public class JwtUtils {
                 .claim("roles", userRole.getRoles()) // 添加角色
                 .claim("permissions", userRole.getPermissions()) // 添加权限
                 .issuedAt(new Date()) // 签发时间
-                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getExpiration())) // 令牌过期时间
+                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getLongExpiration())) // 令牌过期时间
                 .signWith(this.secretKey) // 向claim中添加密钥
                 .compact();
     }
 
+    /**
+     * 创建短时Token
+     */
+    public String createToken(Long id,String key) {
+        LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserRole::getUserId, id);
+        UserRole userRole = this.userRoleService.getOne(queryWrapper);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userRole) || ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
+        return Jwts.builder()
+                .header()
+                .type("JWT")
+                .and() // 创建JWT构建器
+                .subject(String.valueOf(id)) // 将用户的id添加到令牌中
+                .issuer(this.jwtProperties.getIssuer()) // 签发者
+                .issuedAt(new Date()) // 签发时间
+                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getShortExpiration())) // 令牌过期时间
+                .signWith(Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8))) // 向claim中添加密钥
+                .compact();
+    }
 
-    //解析获得关键Id
+
+    //解析长时Token的Id
     public Long extractId(String token) {
         try {
             String subject = extractClaim(token, Claims::getSubject);
@@ -82,8 +102,24 @@ public class JwtUtils {
         }
     }
 
+    //解析短时Token的Id
+    public Long extractId(String token,String key) {
+        try {
+            String subject = extractClaim(token, Claims::getSubject,key);
+            if (subject == null || subject.isEmpty()) {
+                return null;
+            }
+            Long id = Long.valueOf(subject);
+            log.info("web_id:{}", id);
+            return id;
+        } catch (Exception e) {
+            log.debug("从令牌中提取WebId时发生异常", e);
+            return null;
+        }
+    }
+
     /**
-     * 从token中提取用户角色
+     * 从长时token中提取用户角色
      * @param token
      * @return List<String>
      */
@@ -92,7 +128,7 @@ public class JwtUtils {
     }
 
     /**
-     * 从token中提取用户权限
+     * 从长时token中提取用户权限
      * @param token
      * @return List<String>
      */
@@ -100,7 +136,7 @@ public class JwtUtils {
         return extractAndReturnClaims(token).get("permissions", List.class);
     }
 
-    //提取所有的声明
+    //提取长时Token中所有的声明
     public Claims extractAndReturnClaims(String token) {
         // 尝试提取token中的所有声明（Claims）
         try {
@@ -117,7 +153,24 @@ public class JwtUtils {
         }
     }
 
-    // 验证当前token是否过期
+    //提取短时token的所有的声明
+    public Claims extractAndReturnClaims(String token,String key) {
+        // 尝试提取token中的所有声明（Claims）
+        try {
+            // 使用JWT库解析token
+            return Jwts.parser()
+                    .verifyWith(Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8))) // 设置密钥
+                    .build()
+                    .parseSignedClaims(token) // 解析并验证token
+                    .getPayload();
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        } catch (JwtException e) {
+            throw e;
+        }
+    }
+
+    // 验证当前长时token是否有效
     public boolean isTokenValid(String token) {
         // 用于判断当前token是否过期
         try {
@@ -128,15 +181,40 @@ public class JwtUtils {
         }
     }
 
-    // 获取令牌过期时间
+    // 验证当前短时token是否过期
+    public boolean isTokenValid(String token,String key) {
+        // 用于判断当前token是否过期
+        try {
+            return extractExpiration(token,key).after(new Date());
+        } catch (Exception e) {
+            log.error("从令牌中提取过期时间时发生异常:{}", e.getMessage());
+            return false;
+        }
+    }
+
+    // 获取长时Token令牌过期时间
     private Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
-    // 提取Claim中的数据
+    //获取短时Token的令牌过期时间
+    private Date extractExpiration(String token,String key) {
+        return extractClaim(token, Claims::getExpiration,key);
+    }
+
+
+    // 提取长时Token的Claim中的数据
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         // 调用extractAllClaims方法，传入令牌token，提取所有的声明信息
         final Claims claims = extractAndReturnClaims(token);
+        // 使用传入的claimsResolver函数，对提取的声明信息进行处理，并返回处理后的结果
+        return claimsResolver.apply(claims);
+    }
+
+    // 提取短时Token的Claim中的数据
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver,String key) {
+        // 调用extractAllClaims方法，传入令牌token，提取所有的声明信息
+        final Claims claims = extractAndReturnClaims(token,key);
         // 使用传入的claimsResolver函数，对提取的声明信息进行处理，并返回处理后的结果
         return claimsResolver.apply(claims);
     }

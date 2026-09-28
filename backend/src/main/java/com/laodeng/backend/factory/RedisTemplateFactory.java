@@ -77,5 +77,16 @@ public class RedisTemplateFactory<T> {
         return template;
     }
 
+    public RedisTemplate<String,String> createSecurityTemplate(LettuceConnectionFactory lettuceConnectionFactory){
+        RedisTemplate<String,String> template = new RedisTemplate<>();
+        template.setKeySerializer(this.stringSerializer);
+        template.setHashKeySerializer(this.stringSerializer);
+        template.setConnectionFactory(lettuceConnectionFactory);
+        template.setValueSerializer(this.stringSerializer);
+        template.setHashValueSerializer(this.stringSerializer);
+        template.afterPropertiesSet(); //让 RedisTemplate 立刻检查并绑定
+        return template;
+    }
+
 
 }

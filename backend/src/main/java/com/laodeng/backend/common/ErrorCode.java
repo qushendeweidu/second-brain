@@ -26,7 +26,7 @@ public enum ErrorCode {
     TOKEN_ERROR(401,"无效token"),
     NO_AUTH_ERROR(40103, "无权限"),
     NO_ROLE_ERROR(40104, "无角色权限"),
-
+    TOKEN_CREATE_ERROR(40105,"Token创建失败"),
     // ==================== 客户端错误 - 用户模块 (402xx) ====================
     LOGIN_ERROR(40201, "登录失败"),
     REGISTER_ERROR(40202, "注册失败"),
@@ -35,6 +35,7 @@ public enum ErrorCode {
     USER_UPDATE_ERROR(40205, "用户信息更新失败"),
     USER_NAME_REPEAT(40206,"用户名重复"),
     USER_BLOCKED(40207,"账户已被封禁"),
+    USER_RESTRICTED(40208,"用户已被限流"),
     // ==================== 客户端错误 - 文件模块 (403xx) ====================
     UPLOAD_ERROR(40301, "文件上传失败"),
     DOWNLOAD_ERROR(40302, "文件下载失败"),
@@ -47,7 +48,11 @@ public enum ErrorCode {
     SERIALIZE_ERROR(50003, "序列化失败"),
     DESERIALIZE_ERROR(50004, "反序列化失败"),
     // ==================== 服务端错误 - 系统级 (500xx) ====================
-    BUSINESS_ERROR(50005, "业务错误");
+    BUSINESS_ERROR(50005, "业务错误"),
+
+    // ==================== redis错误 (600xx) ====================
+    REDIS_ERROR(60001,"redis出现错误"),
+    REDIS_CONNECTION_ERROR(60002,"redis连接失败");
 
     private final int code;
 

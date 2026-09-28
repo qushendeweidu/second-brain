@@ -5,6 +5,9 @@ import com.laodeng.backend.common.PageResult;
 import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.vo.UserVO;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.util.Map;
 
 /**
  * @author laodeng
@@ -25,11 +28,13 @@ public interface UserService extends IService<User> {
 
     void deleteUser(Long id);
 
-    String login(LoginDTO loginDTO);
+    Map<String, String> login(LoginDTO loginDTO, HttpServletRequest request);
 
-    void register(LoginDTO loginDTO);
+    void register(RegisterDTO registerDTO);
 
     void blockedUser(BlockedUserDTO userId);
 
     void deleteUserSecurity(Long userId);
+
+    String getShortToken(HttpServletRequest request);
 }

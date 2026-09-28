@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName(value = "user_profile", autoResultMap = true)
+@TableName(value = "user_profile")
 public class UserProfile {
     @TableId
     private Long id;

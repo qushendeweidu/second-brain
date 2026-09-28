@@ -2,7 +2,7 @@ name: second-brain
 
 services:
   mysql:
-    image: mysql:8.0.12
+    image: mysql:8.4
     container_name: mysql-service
     restart: always
     environment:
@@ -12,7 +12,6 @@ services:
     ports:
       - "${MYSQL_PORT}:3306"
     command:
-      - --default-authentication-plugin=mysql_native_password
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
     volumes:
@@ -32,12 +31,17 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT}:6379"
-    command: >
-      sh -c "
-      mkdir -p /etc/redis &&
-      printf 'user default off\nuser %s on >%s ~* +@all\n' \"$$REDIS_USERNAME\" \"$$REDIS_PASSWORD\" > /etc/redis/users.acl &&
-      exec redis-server --aclfile /etc/redis/users.acl --appendonly yes
-      "
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        mkdir -p /etc/redis
+        cat > /etc/redis/users.acl << EOF
+        user default off
+        user ${REDIS_USERNAME} on >${REDIS_PASSWORD} ~* +@all
+        EOF
+        exec redis-server --aclfile /etc/redis/users.acl --appendonly yes
     volumes:
       - ./.docker/redis/data:/data
     networks:
@@ -56,6 +60,29 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - ./.docker/minio/data:/data
+    networks:
+      - second-brain
+  kafka:
+    image: apache/kafka:4.2.1
+    container_name: kafka-service
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+    ports:
+      - "${KAFKA_PORT}:9092"
+    volumes:
+      - ./.docker/kafka/data:/var/lib/kafka/data
     networks:
       - second-brain
 

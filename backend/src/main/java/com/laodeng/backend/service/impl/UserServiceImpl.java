@@ -2,9 +2,7 @@ package com.laodeng.backend.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -13,6 +11,7 @@ import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.laodeng.backend.common.CustomPage;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.common.PageResult;
+import com.laodeng.backend.config.properties.TokenProperties;
 import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.po.UserProfile;
@@ -25,14 +24,15 @@ import com.laodeng.backend.service.UserProfileService;
 import com.laodeng.backend.service.UserRoleService;
 import com.laodeng.backend.service.UserService;
 import com.laodeng.backend.utils.JwtUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author laodeng
@@ -49,39 +49,62 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private final UserRoleService userRoleService;
     private final UserProfileService userProfileService;
     private final UserMapper userMapper;
-    private final JwtUtils jwtUtils;
+    private final TokenProperties tokenProperties;
+    private final UserProxyRepository userProxyRepository;
     private final RedisSecurityHandle redisSecurityHandle;
     private final PasswordEncoder passwordEncoder;
-    @Lazy
-    private final UserService self;
-    private static final String DEFAULT_ROLE = "USER";
-    private static final String DEFAULT_PERMISSION = "user:read";
+    private final JwtUtils jwtUtils;
 
     /**
      * 登陆
+     *
      * @param loginDTO 登陆信息
      * @return 登陆结果
      */
     @Override
-    public String login(LoginDTO loginDTO) {
+    public Map<String, String> login(LoginDTO loginDTO, HttpServletRequest request) {
         log.info("用户:{} 尝试登陆", loginDTO.getUsername());
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, loginDTO.getUsername());
         User user = this.getOne(queryWrapper);
-        ThrowUtils.throwIf(ObjectUtil.isEmpty( user), ErrorCode.NOT_FOUND_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(user), ErrorCode.NOT_FOUND_ERROR); //当前账户不存在时拦截
+        ThrowUtils.throwIf(ObjectUtil.equal(user.getStatus(),0),ErrorCode.USER_BLOCKED); //当前账户被锁定时拦截
+        // 检测当前token的userId的redis是否被短时封禁
+        ThrowUtils.throwIf(ObjectUtil.equal(redisSecurityHandle.getSecurityKey(user.getId().toString()),"0"),ErrorCode.USER_BLOCKED);
         log.info("用户:{} 登陆", user.getUsername());
-        String token = null;
-        if (this.passwordEncoder.matches(loginDTO.getPassword(), user.getPassword())) {
-            Long userId = user.getId();
-            if (Boolean.TRUE.equals(this.redisSecurityHandle.checkSecurityKey(userId.toString()))){
-                token = this.redisSecurityHandle.getSecurityKey(userId.toString());
-            }else {
-                token = this.jwtUtils.createToken(userId);
-                this.redisSecurityHandle.createSecurityKey(userId.toString(), token);
-            }
+        Map<String,String> userToken = new HashMap<>(); // 用于存储长短Token的Map
+        // 判断当前用户的密码是否正确
+        ThrowUtils.throwIf(!this.passwordEncoder.matches(loginDTO.getPassword(), user.getPassword()),ErrorCode.PASSWORD_ERROR);
+        // 用户登录通过创建用户的id
+        Long userId = user.getId();
+        String freshToken = request.getHeader(this.tokenProperties.getRefresh());
+        String shortToken = request.getHeader(this.tokenProperties.getGeneration());
+        if (ObjectUtil.isEmpty(freshToken) || !this.jwtUtils.isTokenValid(freshToken)) { // 判断当前是否携带长Token或者是否有效
+            //如果未存在Token则直接创建一个新的长时Token
+            String newFreshToken = this.jwtUtils.createToken(userId);
+            // 将长Token放到Map中
+            userToken.put(this.tokenProperties.getRefresh(),newFreshToken);
+            // 更新redis中的长时token
+            redisSecurityHandle.createOrUpdateSecurityKey(userId.toString(),newFreshToken);
+            // 更新长时Token
+            freshToken = newFreshToken;
         }
-        ThrowUtils.throwIf("0".equals(token), ErrorCode.USER_BLOCKED);
-        return token;
+        if (ObjectUtil.isEmpty(shortToken) || !this.jwtUtils.isTokenValid(shortToken,freshToken)){ // 判断当前是否携带短Token或者是否有效
+            //如果未存在Token则直接创建一个新的短时Token
+            String newShortToken = this.jwtUtils.createToken(userId,freshToken);
+            // 将短Token放到Map中
+            userToken.put(this.tokenProperties.getGeneration(),newShortToken);
+        }
+        return userToken;
+    }
+
+    @Override
+    public Long createUser(UserCreateDTO userCreateDTO) {
+        long count = this.count(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, userCreateDTO.getUsername())
+        );
+        ThrowUtils.throwIf(count > 0, ErrorCode.USER_NAME_REPEAT);
+        return this.userProxyRepository.createUser(userCreateDTO);
     }
 
     @Override
@@ -113,31 +136,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return userVO;
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createUser(UserCreateDTO userCreateDTO) {
-        long count = this.count(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, userCreateDTO.getUsername())
-        );
-        ThrowUtils.throwIf(count > 0, ErrorCode.USER_NAME_REPEAT);
 
-        User user = new User();
-        BeanUtil.copyProperties(userCreateDTO, user);
-        user.setPassword(this.passwordEncoder.encode(userCreateDTO.getPassword()));
-        user.setStatus(userCreateDTO.getStatus() == null ? 1 : userCreateDTO.getStatus());
-        ThrowUtils.throwIf(!this.save(user), ErrorCode.OPERATION_ERROR);
-
-        ThrowUtils.throwIf(!this.userRoleService.save(UserRole.builder()
-                .userId(user.getId())
-                .roles(List.of(DEFAULT_ROLE))
-                .permissions(List.of(DEFAULT_PERMISSION))
-                .build()), ErrorCode.OPERATION_ERROR);
-        ThrowUtils.throwIf(!this.userProfileService.save(UserProfile.builder()
-                .userId(user.getId())
-                .bio("这个人很懒，什么都没有留下")
-                .build()), ErrorCode.OPERATION_ERROR);
-        return user.getId();
-    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -190,19 +189,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 注册账户
-     * @param loginDTO 登陆DTO层
+     * @param registerDTO 登陆DTO层
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void register(LoginDTO loginDTO) {
-        self.createUser(UserCreateDTO.builder()
-                .username(loginDTO.getUsername())
-                .password(loginDTO.getPassword())
+    public void register(RegisterDTO registerDTO) {
+        this.userProxyRepository.createUser(UserCreateDTO.builder()
+                .username(registerDTO.getUsername())
+                .password(registerDTO.getPassword())
                 .build());
     }
 
     /**
-     * 封禁帐户
+     * 封禁账户
      * @param blockedUserDTO
      */
     @Override
@@ -211,7 +209,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getById(blockedUserDTO.getUserId());
         ThrowUtils.throwIf(ObjectUtil.isEmpty(user), ErrorCode.USER_NOT_FOUND_ERROR);
         if (ObjectUtil.isNotEmpty(blockedUserDTO.getBlockedTime())) {
-            redisSecurityHandle.createSecurityKey(
+            this.redisSecurityHandle.createOrUpdateSecurityKey(
                     blockedUserDTO.getUserId().toString(),
                     "0",
                     blockedUserDTO.getBlockedTime(),
@@ -227,7 +225,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     .set(User::getStatus, 0);
             if (this.update(lambdaUpdateWrapper)){
                 log.info("用户账户状态更新成功正在删除redis残余key");
-                redisSecurityHandle.deleteSecurityKey(user.getId().toString());
+                this.redisSecurityHandle.deleteSecurityKey(user.getId().toString());
             }
         }
     }
@@ -266,4 +264,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         log.info("正在删除redis的权限数据");
         this.redisSecurityHandle.deleteSecurityKey(userId.toString());
     }
+
+    public String getShortToken(HttpServletRequest request){
+        String refreshToken = request.getHeader(tokenProperties.getRefresh());
+        User user = this.getById(this.jwtUtils.extractId(refreshToken));
+        // 首先判断当前用户是否已经被封号或者用户不存在
+        ThrowUtils.throwIf(ObjectUtil.equal(user.getStatus(),0) || ObjectUtil.isEmpty(user),ErrorCode.TOKEN_ERROR);
+        // 若用户已经被暂时封禁则抛异常
+        ThrowUtils.throwIf(ObjectUtil.equal(redisSecurityHandle.getSecurityKey(user.getId().toString()),"0"),ErrorCode.USER_BLOCKED);
+        // 创建用户id的Long对象
+        Long userId = user.getId();
+        //判断当前的刷新token是否有效而且不为空
+        ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(refreshToken) || ObjectUtil.isEmpty(refreshToken),ErrorCode.TOKEN_ERROR);
+        // 当前长时token是有效的
+        String shortToken = this.jwtUtils.createToken(userId,refreshToken);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(shortToken),ErrorCode.TOKEN_CREATE_ERROR);
+        return shortToken;
+
+    }
+
 }

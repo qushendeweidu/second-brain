@@ -6,6 +6,8 @@ import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.common.R;
 import lombok.extern.log4j.Log4j2;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.client.RedisException;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -89,6 +91,28 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * redis连接出现错误
+     * @param e redis连接异常
+     * @return 响应包装类
+     */
+    @ExceptionHandler(RedisConnectionFailureException.class)
+    public R<?> redisConnectionFailureExceptionHandler(HttpRequestMethodNotSupportedException e) {
+        log.warn("redis连接失败: {}", e.getMethod());
+        return R.error(ErrorCode.REDIS_CONNECTION_ERROR, "redis连接失败: " + e.getMethod());
+    }
+
+    /**
+     * redis出现错误
+     * @param e redis异常
+     * @return 响应包装类
+     */
+    @ExceptionHandler(RedisException.class)
+    public R<?> redisExceptionHandler(RedisException e) {
+        log.warn("当前redis出现异常");
+        return R.error(ErrorCode.REDIS_ERROR, "redis出现错误"+e.getMessage());
+    }
+
+    /**
      * 上传文件超过大小限制
      * @param e 文件超限异常
      * @return 响应包装类
@@ -106,8 +130,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public R<?> businessExceptionHandler(BusinessException e) {
-        log.warn("业务异常: code={}, msg={}", e.getCode(), e.getMessage());
-        return new R<>(e.getCode(), e.getMessage());
+        log.warn("业务异常: code={}, msg={}", e.getErrorCode().getCode(), e.getMessage());
+        return new R<>(e.getErrorCode().getCode(), e.getMessage());
     }
 
     /**

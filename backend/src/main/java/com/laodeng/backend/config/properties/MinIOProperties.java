@@ -1,7 +1,6 @@
 package com.laodeng.backend.config.properties;
 
 import lombok.Data;
-import lombok.Getter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**

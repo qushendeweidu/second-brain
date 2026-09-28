@@ -1,17 +1,20 @@
-package com.laodeng.backend.controller;
+package com.laodeng.backend.controller.user;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.common.PageResult;
 import com.laodeng.backend.common.R;
+import com.laodeng.backend.config.properties.TokenProperties;
 import com.laodeng.backend.domain.dto.*;
 import com.laodeng.backend.domain.vo.UserProfileVO;
 import com.laodeng.backend.domain.vo.UserRoleVO;
 import com.laodeng.backend.domain.vo.UserVO;
 import com.laodeng.backend.exception.ThrowUtils;
+import com.laodeng.backend.handler.RedisSecurityHandle;
 import com.laodeng.backend.service.UserProfileService;
+import com.laodeng.backend.service.UserRestrictService;
 import com.laodeng.backend.service.UserRoleService;
 import com.laodeng.backend.service.UserService;
-import com.laodeng.backend.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +23,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * @author laodeng
@@ -35,9 +41,9 @@ import org.springframework.web.multipart.MultipartFile;
 @Validated
 public class UserController {
     private final UserService userService;
+    private final UserRestrictService userRestrictService;
     private final UserRoleService userRoleService;
     private final UserProfileService  userProfileService;
-    private final JwtUtils jwtUtils;
 
     // ==================== 登陆注册部分 ====================
     /**
@@ -46,20 +52,30 @@ public class UserController {
      * @return
      */
     @PostMapping("/login")
-    public R<String> login(@RequestBody @Validated LoginDTO loginDTO) {
-        String isLogin = this.userService.login(loginDTO);
-        ThrowUtils.throwIf(isLogin==null, ErrorCode.PASSWORD_ERROR);
+    public R<Map<String,String>> login(@RequestBody @Validated LoginDTO loginDTO, HttpServletRequest request) {
+        Map<String,String> isLogin = this.userService.login(loginDTO,request);
         return R.success(isLogin);
     }
 
     /**
      * 注册接口
-     * @param loginDTO
+     * @param registerDTO
      */
     @PostMapping("/register")
-    public R<Void> register(@RequestBody @Validated LoginDTO loginDTO) {
-        this.userService.register(loginDTO);
+    public R<Void> register(@RequestBody @Validated RegisterDTO registerDTO) {
+        this.userService.register(registerDTO);
         return R.success();
+    }
+
+    /**
+     * 使用携带的长时token请求获得短时token
+     * @param request
+     * @return
+     */
+    @PreAuthorize("hasRole('USER')")
+    @PostMapping("/get_short_token")
+    public R<String> getShortToken(HttpServletRequest request){
+        return R.success(this.userService.getShortToken(request));
     }
 
     // ==================== 用户部分 ====================
@@ -267,10 +283,22 @@ public class UserController {
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/deleteUserSecurity/{userId}")
-    public R<Boolean> deleteUserSecurity(@PathVariable  Long userId) {
+    @DeleteMapping("/deleteUserSecurity/{userId}")
+    public R<Void> deleteUserSecurity(@PathVariable  Long userId) {
         this.userService.deleteUserSecurity(userId);
-        return R.success(true);
+        return R.success();
+    }
+
+    /**
+     * 给用户的一段长时Token做限流
+     * @param userId 用户id
+     * @return
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/restrictUserToken")
+    public R<Void> restrictUserToken(Long userId, Long restrictId,TimeUnit timeUnit){
+        this.userRestrictService.restrictUserToken(userId,timeUnit,restrictId);
+        return R.success();
     }
 
 }

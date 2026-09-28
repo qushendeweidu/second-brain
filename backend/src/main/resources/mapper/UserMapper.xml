@@ -150,4 +150,15 @@
         ORDER BY u.id DESC
     </select>
 
+    <select id="getUsername"
+            parameterType="java.lang.String"
+            resultType="java.lang.String">
+
+        select u.username from second_brain.user as u
+        <where>
+            u.username = #{username}
+        </where>
+
+    </select>
+
 </mapper>

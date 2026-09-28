@@ -3,7 +3,6 @@ package com.laodeng.backend.config;
 import com.laodeng.backend.config.properties.RedisProperties;
 import com.laodeng.backend.factory.RedisTemplateFactory;
 import io.lettuce.core.resource.DefaultClientResources;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -29,13 +28,33 @@ public class RedisConfig {
         this.redisProperties = redisProperties;
         this.clientResources = clientResources;
     }
+
+    /**
+     * 权限校验redis库
+     * @return
+     */
     @Bean(value = "securityRedisTemplate")
     public RedisTemplate<String, String> securityRedisTemplate() {
         RedisTemplateFactory<String> redisTemplateFactory = new RedisTemplateFactory<>(String.class);
         LettuceConnectionFactory lettuceConnectionFactory = redisTemplateFactory.createConnectionFactory(this.redisProperties.getSources().get("security"), this.clientResources);
-        return redisTemplateFactory.createTemplate(lettuceConnectionFactory);
+        return redisTemplateFactory.createSecurityTemplate(lettuceConnectionFactory);
     }
 
+    /**
+     * 限流redis库
+     * @return
+     */
+    @Bean(value = "restrictRedisTemplate")
+    public RedisTemplate<String,String> restrictRedisTemplate(){
+        RedisTemplateFactory<String> redisTemplateFactory = new RedisTemplateFactory<>(String.class);
+        LettuceConnectionFactory lettuceConnectionFactory = redisTemplateFactory.createConnectionFactory(this.redisProperties.getSources().get("restrict"),this.clientResources);
+        return redisTemplateFactory.createSecurityTemplate(lettuceConnectionFactory) ;
+    }
+
+    /**
+     * 热数据redis库
+     * @return
+     */
     @Bean(value = "hotDataRedisTemplate")
     public RedisTemplate<String, String> hotDataRedisTemplate() {
         RedisTemplateFactory<String> redisTemplateFactory = new RedisTemplateFactory<>(String.class);

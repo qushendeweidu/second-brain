@@ -17,22 +17,17 @@
         <java.version>21</java.version>
         <mybatis-plus.version>3.5.17</mybatis-plus.version>
         <spring-security.version>7.0.6</spring-security.version>
+        <spring-lombok-version>1.18.46</spring-lombok-version>
     </properties>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>${spring-lombok-version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -129,6 +124,12 @@
             <artifactId>minio</artifactId>
             <version>8.5.9</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>4.2.1</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -141,6 +142,8 @@
                         <exclude>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
+                            <version>${spring-lombok-version}</version>
+                            <optional>true</optional>
                         </exclude>
                     </excludes>
                 </configuration>

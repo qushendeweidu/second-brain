@@ -1,18 +1,19 @@
 package com.laodeng.backend.config;
 
+import com.laodeng.backend.config.properties.AuthWhitelistProperties;
 import com.laodeng.backend.config.properties.FrontendProperties;
 import com.laodeng.backend.filter.JwtAuthenticationFilter;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -31,16 +32,29 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final FrontendProperties frontendProperties;
+    private final AuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final AuthWhitelistProperties authWhitelistProperties;
 
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          FrontendProperties frontendProperties,
+                          AuthenticationEntryPoint jwtAuthenticationEntryPoint,
+                          AuthWhitelistProperties authWhitelistProperties) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.frontendProperties = frontendProperties;
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
+        this.authWhitelistProperties = authWhitelistProperties;
+    }
 
+    /**
+     * 权限拦截器
+     * @param http http请求
+     * @return 响应一个拦截器链条
+     */
     @Bean
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http
-    ) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
         return http
                 //开启cors配置
                 .cors(Customizer.withDefaults())
@@ -58,10 +72,7 @@ public class SecurityConfig {
                         auth -> auth
                                 //登录接口放行
                                 .requestMatchers(
-                                        "/user/login",
-                                        "/user/register",
-                                        "/file/**",
-                                        "/favicon.ico"
+                                       this.authWhitelistProperties.getWhitelist().toArray(String[]::new)
                                 )
                                 .permitAll() //放行上面的这些请求路径
                                 //下面是包含所有的其他请求
@@ -69,9 +80,13 @@ public class SecurityConfig {
                                 //执行验证
                                 .authenticated()
                 )
+                // ===== 关键：注册认证失败处理器 =====
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(this.jwtAuthenticationEntryPoint)
+                )
                 //添加JWT过滤器
                 .addFilterBefore(
-                        jwtAuthenticationFilter,
+                        this.jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 )
                 .build();
@@ -80,9 +95,9 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // 前端地址
-        config.setAllowedOrigins(List.of(frontendProperties.getUrl()));
-        // 请求方法
+        // 允许跨域的前端地址
+        config.setAllowedOrigins(List.of(this.frontendProperties.getUrl()));
+        // 允许请求的请求方法
         config.setAllowedMethods(
                 List.of(
                         "GET",
@@ -93,13 +108,13 @@ public class SecurityConfig {
                         "OPTIONS"
                 )
         );
-        // 请求头
+        // 允许请求的请求头请求头
         config.setAllowedHeaders(List.of("*"));
         // 统一配置暴露哪些响应头给前端，前端 Axios 就能无缝读取了
-        config.setExposedHeaders(List.of("Authorization"));
-        config.setMaxAge(frontendProperties.getMaxAge());
+        config.setExposedHeaders(List.of("Authorization","RefreshToken"));
+        config.setMaxAge(this.frontendProperties.getMaxAge()); // 缓存预检请求响应的时间（以秒为单位）
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        source.registerCorsConfiguration("/**", config); // 对于所有路径实现上面的配置
         return source;
     }
 }

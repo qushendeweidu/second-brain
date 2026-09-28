@@ -17,4 +17,6 @@ import org.apache.ibatis.annotations.Param;
 
 public interface UserMapper extends BaseMapper<User> {
     IPage<UserVO> getUserVOByUserDTO(Page<UserVO> page, @Param("userDTO") UserDTO userDTO);
+
+    String getUsername(@Param("username")String userName);
 }
