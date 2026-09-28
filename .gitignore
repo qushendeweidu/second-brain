@@ -3,15 +3,19 @@
 .docker/mysql/logs/
 .docker/redis/data/
 .docker/redis/logs/
+.docker/minio/data/
+.docker/kafka/data/
 
-# ---- 密钥 / 凭据 ----
+# ---- 密钥 / 凭据（只写确切文件名，不用 credentials*、secrets*、*token*）----
 .env
 *.key
 *.pem
 *.pfx
-credentials*
-secrets*
-*token*
+/credentials.json
+/credentials.yml
+/secrets.json
+/secrets.yml
+/secrets.yaml
 
 # ---- 数据库文件 ----
 *.db
@@ -20,9 +24,9 @@ secrets*
 *.mdb
 
 # ---- 敏感配置 ----
-*-secret.yml
-*-secret.yaml
-database.yml
+/application-secret.yml
+/application-secret.yaml
+/database.yml
 
 # ---- 构建产物 ----
 target/
