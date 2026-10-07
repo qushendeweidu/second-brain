@@ -6,6 +6,7 @@ create table if not exists user
 (
     id          bigint primary key comment '主键id',
     username    varchar(255) not null comment '用户名',
+    unique key uk_username(username),
     password    varchar(255) not null comment '密码',
     nickname    varchar(255) default null comment '用户昵称',
     email       varchar(255) default null comment '邮箱',

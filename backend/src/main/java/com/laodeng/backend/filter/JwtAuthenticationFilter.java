@@ -40,15 +40,13 @@ import java.util.List;
 @Log4j2
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtUtils jwtUtils;
-    private final UserService userService;
     private final RedisSecurityHandle redisSecurityHandle;
     private final List<String> authWhitelist;
     private final AntPathMatcher pathMatcher;
     private final TokenProperties tokenProperties;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils, UserService userService, RedisSecurityHandle redisSecurityHandle, List<String> authWhitelist, TokenProperties tokenProperties) {
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, RedisSecurityHandle redisSecurityHandle, List<String> authWhitelist, TokenProperties tokenProperties) {
         this.jwtUtils = jwtUtils;
-        this.userService = userService;
         this.redisSecurityHandle = redisSecurityHandle;
         this.authWhitelist = authWhitelist;
         this.tokenProperties = tokenProperties;
@@ -71,14 +69,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             ThrowUtils.throwIf(shortToken.split("\\.").length!=3 || refreshToken.split("\\.").length!=3,new BusinessException(ErrorCode.TOKEN_ERROR));
             //校验长时token是否有效
             ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(refreshToken),ErrorCode.TOKEN_ERROR);
+            //长时token有效之后获取token中的用户id
+            Long userId = this.jwtUtils.extractId(refreshToken); // 从token中提取用户id，这里即使token过期也可以正常获取userId
+            ThrowUtils.throwIf(ObjectUtil.isEmpty(userId), new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));//如果用户ID为空那么抛出异常
+            //判断当前长时token是否存在
+            String redisToken = this.redisSecurityHandle.getSecurityKey(userId.toString());
+            ThrowUtils.throwIf(ObjectUtil.isEmpty(redisToken),ErrorCode.TOKEN_ERROR);
+            // 如果当前长时token存在但是与reids不一致因为此时长时token已经校验成功所以直接替换redis的长时token
+            if (ObjectUtil.notEqual(refreshToken,redisToken)){
+                // 更新当前redis中存储的长时token
+                this.redisSecurityHandle.createOrUpdateSecurityKey(userId.toString(),redisToken);
+            }
             // 短时token如果无效直接抛异常
             // （长时token作为短时token的密钥）
             ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(shortToken,refreshToken),ErrorCode.TOKEN_ERROR);
-            //短时Token校验无误之后
-            Long userId = this.jwtUtils.extractId(refreshToken); // 从token中提取用户id，这里即使token过期也可以正常获取userId
-            ThrowUtils.throwIf(ObjectUtil.isEmpty(userId), new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));//如果用户ID为空那么抛出异常
             // 首先检测当前token的userId的redis是否被短时封禁
-            ThrowUtils.throwIf(ObjectUtil.equal(redisSecurityHandle.getSecurityKey(userId.toString()),"0"),ErrorCode.USER_BLOCKED);
+            ThrowUtils.throwIf(ObjectUtil.equal(this.redisSecurityHandle.getSecurityKey(userId.toString()),"0"),ErrorCode.USER_BLOCKED);
 
             // Security封装好的对象列表用于存储用户的权限和角色
             List<GrantedAuthority> authorities = new ArrayList<>();
@@ -119,18 +125,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private void setErrorAttributes(HttpServletRequest request, ErrorCode errorCode, String message) {
         request.setAttribute("ERROR_CODE", errorCode); // 将异常枚举类放到request中方便JwtAuthenticationEntryPoint中的读取并序列化
         request.setAttribute("ERROR_MESSAGE", message); // 将异常信息放到request中方便JwtAuthenticationEntryPoint中的读取并序列化
-    }
-
-    /**
-     * 当前方法作用在于检查当前提供的UserId的对应的用户是否存在账户是否正常
-     * @param userId 用户唯一ID
-     * @return 如果正常则返回true 如果失败则直接抛出异常
-     */
-    private Boolean checkUserActive(Long userId){
-        User user = this.userService.getById(userId);
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(user),ErrorCode.USER_NOT_FOUND_ERROR);
-        ThrowUtils.throwIf(ObjectUtil.equal(user.getStatus(),0),ErrorCode.USER_BLOCKED);
-        return true;
     }
 
     @Override

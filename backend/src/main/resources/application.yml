@@ -50,6 +50,7 @@ app:
       - /user/register
       - /file/**
       - /favicon.ico
+      - /user/get_short_token
 
   redis:
     sources:

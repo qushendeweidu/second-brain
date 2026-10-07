@@ -27,6 +27,7 @@ import com.laodeng.backend.utils.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,7 +80,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Long userId = user.getId();
         String freshToken = request.getHeader(this.tokenProperties.getRefresh());
         String shortToken = request.getHeader(this.tokenProperties.getGeneration());
-        if (ObjectUtil.isEmpty(freshToken) || !this.jwtUtils.isTokenValid(freshToken)) { // 判断当前是否携带长Token或者是否有效
+        if (ObjectUtil.isEmpty(freshToken) ||
+                !this.jwtUtils.isTokenValid(freshToken) ||
+                !ObjectUtil.equal(userId,this.jwtUtils.extractId(freshToken))) { // 判断当前是否携带长Token或者是否有效
             //如果未存在Token则直接创建一个新的长时Token
             String newFreshToken = this.jwtUtils.createToken(userId);
             // 将长Token放到Map中
@@ -99,11 +102,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    @Transactional(rollbackFor = DuplicateKeyException.class)
     public Long createUser(UserCreateDTO userCreateDTO) {
-        long count = this.count(
-                new LambdaQueryWrapper<User>().eq(User::getUsername, userCreateDTO.getUsername())
-        );
-        ThrowUtils.throwIf(count > 0, ErrorCode.USER_NAME_REPEAT);
         return this.userProxyRepository.createUser(userCreateDTO);
     }
 
@@ -144,13 +144,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getById(userUpdateDTO.getId());
         ThrowUtils.throwIf(user == null, ErrorCode.USER_NOT_FOUND_ERROR);
 
-        if (CharSequenceUtil.isNotBlank(userUpdateDTO.getUsername())
-                && !ObjectUtil.equal(user.getUsername(), userUpdateDTO.getUsername())) {
-            long count = this.count(new LambdaQueryWrapper<User>()
-                    .eq(User::getUsername, userUpdateDTO.getUsername())
-                    .ne(User::getId, userUpdateDTO.getId()));
-            ThrowUtils.throwIf(count > 0, ErrorCode.USER_NAME_REPEAT);
-            user.setUsername(userUpdateDTO.getUsername());
+        if (CharSequenceUtil.isNotBlank(userUpdateDTO.getUsername()) && !ObjectUtil.equal(user.getUsername(), userUpdateDTO.getUsername())) {
+            try {
+                user.setUsername(userUpdateDTO.getUsername());
+            } catch (DuplicateKeyException e) {
+                log.error("当前用户名重复触发唯一约束导致异常抛出给spring");
+                throw new RuntimeException(e);
+            }
         }
         if (CharSequenceUtil.isNotBlank(userUpdateDTO.getPassword())) {
             user.setPassword(this.passwordEncoder.encode(userUpdateDTO.getPassword()));
@@ -265,17 +265,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.redisSecurityHandle.deleteSecurityKey(userId.toString());
     }
 
+    /**
+     * 根据长时token获取短时token
+     * @param request
+     * @return
+     */
     public String getShortToken(HttpServletRequest request){
         String refreshToken = request.getHeader(tokenProperties.getRefresh());
         User user = this.getById(this.jwtUtils.extractId(refreshToken));
         // 首先判断当前用户是否已经被封号或者用户不存在
-        ThrowUtils.throwIf(ObjectUtil.equal(user.getStatus(),0) || ObjectUtil.isEmpty(user),ErrorCode.TOKEN_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(user)|| ObjectUtil.equal(user.getStatus(),0),ErrorCode.TOKEN_ERROR );
         // 若用户已经被暂时封禁则抛异常
         ThrowUtils.throwIf(ObjectUtil.equal(redisSecurityHandle.getSecurityKey(user.getId().toString()),"0"),ErrorCode.USER_BLOCKED);
         // 创建用户id的Long对象
         Long userId = user.getId();
         //判断当前的刷新token是否有效而且不为空
-        ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(refreshToken) || ObjectUtil.isEmpty(refreshToken),ErrorCode.TOKEN_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(refreshToken) ||!this.jwtUtils.isTokenValid(refreshToken),ErrorCode.TOKEN_ERROR);
         // 当前长时token是有效的
         String shortToken = this.jwtUtils.createToken(userId,refreshToken);
         ThrowUtils.throwIf(ObjectUtil.isEmpty(shortToken),ErrorCode.TOKEN_CREATE_ERROR);

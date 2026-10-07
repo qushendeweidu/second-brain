@@ -23,19 +23,16 @@ import java.util.List;
 @Configuration
 public class FilterConfig {
     private final JwtUtils jwtUtils;
-    private final UserService userService;
     private final RedisSecurityHandle redisSecurityHandle;
     private final List<String> authWhitelist;
     private final TokenProperties tokenProperties;
 
     @Autowired
     public FilterConfig(JwtUtils jwtUtils,
-                        UserService userService,
                         RedisSecurityHandle redisSecurityHandle,
                         TokenProperties tokenProperties,
                         AuthWhitelistProperties authWhitelistProperties) {
         this.jwtUtils = jwtUtils;
-        this.userService = userService;
         this.redisSecurityHandle = redisSecurityHandle;
         this.authWhitelist = authWhitelistProperties.getWhitelist();
         this.tokenProperties = tokenProperties;
@@ -49,7 +46,7 @@ public class FilterConfig {
     public JwtAuthenticationFilter jwtAuthenticationFilter(){
 
         return new JwtAuthenticationFilter(
-                this.jwtUtils,this.userService,this.redisSecurityHandle,this.authWhitelist,this.tokenProperties);
+                this.jwtUtils,this.redisSecurityHandle,this.authWhitelist,this.tokenProperties);
     }
 
     /**

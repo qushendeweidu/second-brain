@@ -9,12 +9,14 @@ import com.laodeng.backend.domain.dto.UserCreateDTO;
 import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.domain.po.UserProfile;
 import com.laodeng.backend.domain.po.UserRole;
+import com.laodeng.backend.exception.BusinessException;
 import com.laodeng.backend.exception.ThrowUtils;
 import com.laodeng.backend.mapper.UserMapper;
 import com.laodeng.backend.mapper.UserProfileMapper;
 import com.laodeng.backend.mapper.UserRoleMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,27 +46,27 @@ public class UserProxyRepository {
 
     @Transactional(rollbackFor = Exception.class)
     public Long createUser(UserCreateDTO userCreateDTO) {
-        // 首先检测是否有重复的用户名如果有则抛异常拒绝创建新用户
-        ThrowUtils.throwIf(
-                ObjectUtil.isNotEmpty(this.userMapper.getUsername(userCreateDTO.getUsername())),
-                ErrorCode.USER_NAME_REPEAT
-        );
         User user = new User();
-        BeanUtil.copyProperties(userCreateDTO, user);
-        user.setPassword(this.passwordEncoder.encode(userCreateDTO.getPassword()));
-        user.setStatus(userCreateDTO.getStatus() == null ? 1 : userCreateDTO.getStatus());
-        ThrowUtils.throwIf(!this.userMapper.insertOrUpdate(user), ErrorCode.OPERATION_ERROR);
+        try {
+
+            BeanUtil.copyProperties(userCreateDTO, user);
+            user.setPassword(this.passwordEncoder.encode(userCreateDTO.getPassword()));
+            user.setStatus(userCreateDTO.getStatus() == null ? 1 : userCreateDTO.getStatus());
+            this.userMapper.insert(user);
+        } catch (DuplicateKeyException e) {
+            throw new BusinessException(ErrorCode.USER_NAME_REPEATED_ERROR);
+        }
         // 向数据库插入用户权限数据若失败则抛出异常
-        ThrowUtils.throwIf(!this.userRoleMapper.insertOrUpdate(UserRole.builder()
+        ThrowUtils.throwIf(this.userRoleMapper.insert(UserRole.builder()
                 .userId(user.getId())
                 .roles(List.of(DEFAULT_ROLE))
                 .permissions(List.of(DEFAULT_PERMISSION))
-                .build()), ErrorCode.OPERATION_ERROR);
+                .build()) <= 0, ErrorCode.USER_ROLE_CREATED_ERROR);
         // 向数据库插入用户配置文件数据如果失败则抛异常
-        ThrowUtils.throwIf(!this.userProfileMapper.insertOrUpdate(UserProfile.builder()
+        ThrowUtils.throwIf(this.userProfileMapper.insert(UserProfile.builder()
                 .userId(user.getId())
                 .bio("这个人很懒，什么都没有留下")
-                .build()), ErrorCode.OPERATION_ERROR);
+                .build()) <= 0, ErrorCode.USER_PROFILE_CREATED_ERROR);
         return user.getId();
     }
 }

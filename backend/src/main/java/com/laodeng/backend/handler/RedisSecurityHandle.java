@@ -110,8 +110,8 @@ public class RedisSecurityHandle {
             timeUnit = TimeUnit.MILLISECONDS
     )
     public void restrictUserToken(String key, long limit, long window, TimeUnit timeUnit){
-        window += ThreadLocalRandom.current().nextLong(0,10);
         long seconds = Math.max(1,timeUnit.toSeconds(window)); // 将当前过期时间通过时间类型转化成秒
+        seconds += ThreadLocalRandom.current().nextLong(0,10);
         key = decorateRestictKey(key,window); // 包装传入的key
         long result = this.restrictRedisTemplate.execute(
                 USER_RESTRICT_KEY_SCRIPT,
@@ -138,9 +138,9 @@ public class RedisSecurityHandle {
             timeUnit = TimeUnit.MILLISECONDS
     )
     public void createOrUpdateSecurityKey(String key, String value, Long ttl, TimeUnit timeUnit) {
-        ttl += ThreadLocalRandom.current().nextLong(0,10);
         key = decorateKey(key);
         Long seconds = Math.max(1, timeUnit.toSeconds(ttl));
+        seconds += ThreadLocalRandom.current().nextLong(0,10);
         Long result = this.securityRedisTemplate.execute(
                 CREATE_SECURITY_KEY_SCRIPT,
                 List.of(key),

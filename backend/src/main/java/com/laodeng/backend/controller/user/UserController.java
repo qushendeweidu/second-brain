@@ -72,7 +72,6 @@ public class UserController {
      * @param request
      * @return
      */
-    @PreAuthorize("hasRole('USER')")
     @PostMapping("/get_short_token")
     public R<String> getShortToken(HttpServletRequest request){
         return R.success(this.userService.getShortToken(request));

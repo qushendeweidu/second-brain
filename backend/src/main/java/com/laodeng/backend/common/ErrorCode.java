@@ -33,9 +33,12 @@ public enum ErrorCode {
     USER_NOT_FOUND_ERROR(40203, "用户不存在"),
     PASSWORD_ERROR(40204, "密码错误"),
     USER_UPDATE_ERROR(40205, "用户信息更新失败"),
-    USER_NAME_REPEAT(40206,"用户名重复"),
+    USER_CREATED_ERROR(40206,"用户创建失败"),
     USER_BLOCKED(40207,"账户已被封禁"),
     USER_RESTRICTED(40208,"用户已被限流"),
+    USER_PROFILE_CREATED_ERROR(40209,"用户配置文件创建失败"),
+    USER_ROLE_CREATED_ERROR(40210,"用户权限创建失败"),
+    USER_NAME_REPEATED_ERROR(40211,"账户名重复"),
     // ==================== 客户端错误 - 文件模块 (403xx) ====================
     UPLOAD_ERROR(40301, "文件上传失败"),
     DOWNLOAD_ERROR(40302, "文件下载失败"),
