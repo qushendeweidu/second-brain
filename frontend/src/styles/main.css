@@ -1,0 +1,58 @@
+@import 'tailwindcss';
+
+/* 设计令牌：取自大众商城 Logo —— 钴蓝主色 + 心形红点缀，背景为带蓝调的浅色（不用紫色、少用渐变） */
+@theme {
+  --color-paper: #f3f6fb;
+  --color-card: #fbfcff;
+  --color-ink: #14213d;
+  --color-ink-soft: #4a5670;
+  --color-ink-mute: #7d8aa3;
+  --color-line: #dbe3ef;
+  --color-accent: #0c50c0;
+  --color-accent-strong: #093f99;
+  --color-accent-soft: #e3ecfb;
+  --color-heart: #c8283a;
+  --color-ok: #2f6b4f;
+  --color-danger: #b42318;
+
+  --font-sans: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  /* 标题用圆体，呼应 Logo 的手绘亲和感 */
+  --font-display: 'Yuanti SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 用户端统一控件：输入框 */
+@layer components {
+  .field {
+    @apply block w-full rounded-lg border border-line bg-card px-3.5 py-2.5 text-[15px] text-ink placeholder:text-ink-mute transition-colors outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/25 disabled:opacity-60;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[15px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-paper disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply bg-accent text-card hover:bg-accent-strong;
+  }
+  .btn-ghost {
+    @apply border border-line bg-card text-ink hover:border-ink-mute;
+  }
+  .btn-danger {
+    @apply border border-danger/30 bg-card text-danger hover:bg-danger/5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

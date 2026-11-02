@@ -8,19 +8,16 @@ create table if not exists user
     username    varchar(255) not null comment '用户名',
     unique key uk_username(username),
     password    varchar(255) not null comment '密码',
-    nickname    varchar(255) default null comment '用户昵称',
-    email       varchar(255) default null comment '邮箱',
-    phone       varchar(255) default null comment '电话',
     status      tinyint default 1 comment '用户状态 1:正常 0:禁用',
     create_time timestamp default current_timestamp comment '创建时间',
     update_time timestamp default current_timestamp on update current_timestamp comment '更新时间'
     ) comment ='用户表';
 
--- 用户数据
-INSERT INTO user (id, username, password, nickname, email, phone, status)
-VALUES (1, 'admin', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', '超级管理员', 'admin@example.com', '13800000001', 1),
-       (2, 'zhangsan', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', '张三', 'zhangsan@example.com', '13800000002', 1),
-       (3, 'lisi', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', '李四', 'lisi@example.com', '13800000003', 1);
+-- 用户数据（昵称/邮箱/电话已迁至 user_profile 表）
+INSERT INTO user (id, username, password, status)
+VALUES (1, 'admin', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', 1),
+       (2, 'zhangsan', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', 1),
+       (3, 'lisi', '$2a$12$t4P9MYX7l.aXIP5A1Xgd4OkMUFqNXcd7V7lS8tCQxMMYYFNeokoji', 1);
 
 
 create table if not exists user_role
@@ -54,16 +51,19 @@ VALUES (1, 1, JSON_ARRAY('ADMIN', 'USER'), JSON_ARRAY(
 create table if not exists user_profile(
                                            id          bigint primary key comment '主键id',
                                            user_id     bigint not null comment '用户id',
+                                           nickname    varchar(255) default null comment '用户昵称',
+                                           email       varchar(255) default null comment '邮箱',
+                                           phone       varchar(255) default null comment '电话',
                                            avatar      varchar(255) DEFAULT NULL COMMENT '头像',
     bio         varchar(255) DEFAULT NULL COMMENT '个人简介',
     create_time timestamp default current_timestamp comment '创建时间',
     update_time timestamp default current_timestamp on update current_timestamp comment '更新时间'
     ) comment ='用户资料表';
 
-INSERT INTO user_profile (id, user_id)
-VALUES (1, 1),
-       (2, 2),
-       (3, 3);
+INSERT INTO user_profile (id, user_id, nickname, email, phone)
+VALUES (1, 1, '超级管理员', 'admin@example.com', '13800000001'),
+       (2, 2, '张三', 'zhangsan@example.com', '13800000002'),
+       (3, 3, '李四', 'lisi@example.com', '13800000003');
 
 create table if not exists user_restrict
 (
@@ -74,3 +74,15 @@ create table if not exists user_restrict
 
 INSERT INTO user_restrict (id, restrict_request,window_second)
     VALUE (1,100,60);
+
+
+CREATE TABLE IF NOT EXISTS user_social(
+                             id BIGINT PRIMARY KEY AUTO_INCREMENT,
+                             user_id BIGINT NOT NULL,
+                             provider VARCHAR(20) NOT NULL,          -- 'github'，以后接别的平台也用这张表
+                             provider_uid VARCHAR(64) NOT NULL,      -- GitHub 的数字 id，永不变
+                             provider_login VARCHAR(100),            -- GitHub 用户名，仅用于展示，会变
+                             created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+                             UNIQUE KEY uk_provider_uid (provider, provider_uid),   -- 一个 GitHub 只能绑一个用户
+                             UNIQUE KEY uk_user_provider (user_id, provider)        -- 一个用户只能绑一个 GitHub
+) comment = '用户第三方平台身份绑定表';

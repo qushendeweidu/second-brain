@@ -77,7 +77,6 @@ public class JwtUtils {
                 .header()
                 .type("JWT")
                 .and() // 创建JWT构建器
-                .subject(String.valueOf(id)) // 将用户的id添加到令牌中
                 .issuer(this.jwtProperties.getIssuer()) // 签发者
                 .issuedAt(new Date()) // 签发时间
                 .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getShortExpiration())) // 令牌过期时间
@@ -97,23 +96,7 @@ public class JwtUtils {
             log.info("web_id:{}", id);
             return id;
         } catch (Exception e) {
-            log.debug("从令牌中提取WebId时发生异常", e);
-            return null;
-        }
-    }
-
-    //解析短时Token的Id
-    public Long extractId(String token,String key) {
-        try {
-            String subject = extractClaim(token, Claims::getSubject,key);
-            if (subject == null || subject.isEmpty()) {
-                return null;
-            }
-            Long id = Long.valueOf(subject);
-            log.info("web_id:{}", id);
-            return id;
-        } catch (Exception e) {
-            log.debug("从令牌中提取WebId时发生异常", e);
+            log.warn("从令牌中提取用户ID失败: {}", e.getMessage());
             return null;
         }
     }

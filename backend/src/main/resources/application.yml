@@ -116,8 +116,8 @@ frontend:
   max-age: ${FRONTEND_MAX_AGE}
 
 token:
-  refresh: Authorization
-  generation: RefreshToken
+  refresh: RefreshToken
+  generation: Authorization
 
 minio:
   endpoint: http://${MINIO_HOST}:${MINIO_API_PORT}
@@ -125,6 +125,16 @@ minio:
   bucketName: ${MINIO_BUCKET_NAME}
   accessKey: ${MINIO_ROOT_USER}
   secretKey: ${MINIO_ROOT_PASSWORD}
+
+
+github:
+  oauth:
+    client-id: ${GITHUB_CLIENT_ID}
+    client-secret: ${GITHUB_CLIENT_SECRET}
+    redirect-uri: ${CALLBACK_ADDRESS}
+    proxy-host: ${PROXY_HOST}
+    proxy-port: ${PROXY_PORT}
+
 
 server:
   port: 8808

@@ -1,6 +1,8 @@
 package com.laodeng.backend.handler;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.laodeng.backend.common.ErrorCode;
+import com.laodeng.backend.exception.BusinessException;
 import com.laodeng.backend.exception.ThrowUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,8 +32,9 @@ public class RedisSecurityHandle {
     private final RedisTemplate<String,String> restrictRedisTemplate;
     private static final DefaultRedisScript<Long> CREATE_SECURITY_KEY_SCRIPT = new DefaultRedisScript<>();
     private static final DefaultRedisScript<Long> USER_RESTRICT_KEY_SCRIPT = new DefaultRedisScript<>();
+    private static final DefaultRedisScript<String> GET_AND_DELETE = new DefaultRedisScript<>();
     private static final String BLOCKED_FLAG = "0";
-    private static final Long DEFAULT_TTL_DAYS = 30L;
+    private static final long DEFAULT_TTL_DAYS = 30;
 
     static {
         //使用内置的Lua语言实现操作原子性
@@ -65,6 +68,18 @@ public class RedisSecurityHandle {
                         """
         );
         USER_RESTRICT_KEY_SCRIPT.setResultType(Long.class);
+        
+        GET_AND_DELETE.setScriptText(
+                """
+                        local value = redis.call('GET', KEYS[1])
+                        if value then
+                            redis.call('DEL', KEYS[1])
+                        end
+                        return value
+                        """
+        );
+        GET_AND_DELETE.setResultType(String.class);
+
     }
 
     @Autowired
@@ -73,6 +88,17 @@ public class RedisSecurityHandle {
             @Qualifier("restrictRedisTemplate") RedisTemplate<String, String> restrictRedisTemplate) {
         this.securityRedisTemplate = securityRedisTemplate;
         this.restrictRedisTemplate = restrictRedisTemplate;
+    }
+
+
+    public String deleteAndGetSecurityKey(String key){
+        key = decorateKey(key);
+        String resultValue = this.restrictRedisTemplate.execute(
+                GET_AND_DELETE,
+                List.of(key)
+        );
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(resultValue),ErrorCode.NOT_FOUND_ERROR);
+        return resultValue;
     }
 
     /**
@@ -129,7 +155,7 @@ public class RedisSecurityHandle {
      * @param ttl
      */
     @Retryable(
-            includes = {RedisConnectionFailureException.class, RedisSystemException.class},
+            includes = {BusinessException.class},
             maxRetries = 3,
             delay = 500,
             multiplier = 2.0,
@@ -137,17 +163,17 @@ public class RedisSecurityHandle {
             maxDelay = 5000,
             timeUnit = TimeUnit.MILLISECONDS
     )
-    public void createOrUpdateSecurityKey(String key, String value, Long ttl, TimeUnit timeUnit) {
+    public void createOrUpdateSecurityKey(String key, String value, long ttl, TimeUnit timeUnit) {
         key = decorateKey(key);
-        Long seconds = Math.max(1, timeUnit.toSeconds(ttl));
+        long seconds = Math.max(1, timeUnit.toSeconds(ttl));
         seconds += ThreadLocalRandom.current().nextLong(0,10);
-        Long result = this.securityRedisTemplate.execute(
+        long result = this.securityRedisTemplate.execute(
                 CREATE_SECURITY_KEY_SCRIPT,
                 List.of(key),
                 BLOCKED_FLAG,   // ARGV[1]
                 value,   // ARGV[2]
                 String.valueOf(seconds));    // ARGV[3]
-        ThrowUtils.throwIf(result == 0L, ErrorCode.USER_BLOCKED);
+        ThrowUtils.throwIf(result == 0, ErrorCode.USER_BLOCKED);
     }
 
     /**

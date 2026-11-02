@@ -10,6 +10,7 @@
         <result column="phone" property="phone"/>
         <result column="status" property="status"/>
         <result column="avatar" property="avatar"/>
+        <result column="bio" property="bio"/>
         <result column="roles" property="roles"
                 typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
         <result column="permissions" property="permissions"
@@ -27,11 +28,12 @@
         SELECT
         u.id,
         u.username,
-        u.nickname,
-        u.email,
-        u.phone,
         u.status,
+        up.nickname,
+        up.email,
+        up.phone,
         up.avatar,
+        up.bio,
         ur.roles,
         ur.permissions,
 
@@ -57,15 +59,19 @@
             </if>
 
             <if test="userDTO.nickName != null and userDTO.nickName != ''">
-                AND u.nickname = #{userDTO.nickName}
+                AND up.nickname = #{userDTO.nickName}
             </if>
 
             <if test="userDTO.email != null and userDTO.email != ''">
-                AND u.email = #{userDTO.email}
+                AND up.email = #{userDTO.email}
             </if>
 
             <if test="userDTO.phone != null and userDTO.phone != ''">
-                AND u.phone = #{userDTO.phone}
+                AND up.phone = #{userDTO.phone}
+            </if>
+
+            <if test="userDTO.bio != null and userDTO.bio != ''">
+                AND up.bio LIKE CONCAT('%', #{userDTO.bio}, '%')
             </if>
 
             <if test="userDTO.status != null">

@@ -62,10 +62,13 @@ public class UserProxyRepository {
                 .roles(List.of(DEFAULT_ROLE))
                 .permissions(List.of(DEFAULT_PERMISSION))
                 .build()) <= 0, ErrorCode.USER_ROLE_CREATED_ERROR);
-        // 向数据库插入用户配置文件数据如果失败则抛异常
+        // 向数据库插入用户配置文件数据如果失败则抛异常（昵称/邮箱/电话随资料表一起入库）
         ThrowUtils.throwIf(this.userProfileMapper.insert(UserProfile.builder()
                 .userId(user.getId())
-                .bio("这个人很懒，什么都没有留下")
+                .nickName(userCreateDTO.getNickName())
+                .email(userCreateDTO.getEmail())
+                .phone(userCreateDTO.getPhone())
+                .bio(ObjectUtil.isEmpty(userCreateDTO.getBio()) ? "这个人很懒，什么都没有留下" : userCreateDTO.getBio())
                 .build()) <= 0, ErrorCode.USER_PROFILE_CREATED_ERROR);
         return user.getId();
     }

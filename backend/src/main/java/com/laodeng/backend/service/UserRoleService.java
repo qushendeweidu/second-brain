@@ -16,8 +16,6 @@ public interface UserRoleService extends IService<UserRole> {
 
     UserRoleVO getUserRoleByUserId(Long userId);
 
-    Long createUserRole(UserRoleUpdateDTO userRoleUpdateDTO);
-
     boolean updateUserRole(UserRoleUpdateDTO userRoleUpdateDTO);
 
     void deleteUserRole(Long userId);

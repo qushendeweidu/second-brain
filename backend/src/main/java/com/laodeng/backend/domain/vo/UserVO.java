@@ -39,6 +39,8 @@ public class UserVO{
 
     private String avatar;
 
+    private String bio;
+
     private List<String> roles;
 
     private List<String> permissions;

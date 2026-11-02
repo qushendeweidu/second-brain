@@ -1,7 +1,6 @@
 package com.laodeng.backend.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
-import com.laodeng.backend.domain.dto.UserProfileCreateDTO;
 import com.laodeng.backend.domain.dto.UserProfileUpdateDTO;
 import com.laodeng.backend.domain.po.UserProfile;
 import com.laodeng.backend.domain.vo.UserProfileVO;
@@ -23,9 +22,7 @@ public interface UserProfileService extends IService<UserProfile> {
 
     UserProfileVO getUserProfileByUserId(Long userId);
 
-    UserProfileVO getUserProfileBySelf(HttpServletRequest request);
-
-    Long createUserProfile(UserProfileCreateDTO userProfileCreateDTO, HttpServletRequest request);
+    UserProfileVO getUserProfileBySelf();
 
     void deleteUserProfile(Long userId, HttpServletRequest request);
 }

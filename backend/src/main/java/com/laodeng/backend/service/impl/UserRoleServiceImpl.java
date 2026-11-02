@@ -8,7 +8,7 @@ import com.laodeng.backend.domain.dto.UserRoleUpdateDTO;
 import com.laodeng.backend.domain.po.UserRole;
 import com.laodeng.backend.domain.vo.UserRoleVO;
 import com.laodeng.backend.exception.ThrowUtils;
-import com.laodeng.backend.mapper.UserMapper;
+import com.laodeng.backend.handler.RedisSecurityHandle;
 import com.laodeng.backend.mapper.UserRoleMapper;
 import com.laodeng.backend.service.UserRoleService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserRoleServiceImpl extends ServiceImpl<UserRoleMapper, UserRole> implements UserRoleService {
 
-    private final UserMapper userMapper;
+    private final RedisSecurityHandle redisSecurityHandle;
 
     @Override
     public UserRoleVO getUserRoleByUserId(Long userId) {
@@ -37,21 +37,6 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleMapper, UserRole> i
         );
         ThrowUtils.throwIf(userRole == null, ErrorCode.NO_ROLE_ERROR);
         return toVO(userRole);
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createUserRole(UserRoleUpdateDTO userRoleUpdateDTO) {
-        ThrowUtils.throwIf(this.userMapper.selectById(userRoleUpdateDTO.getUserId()) == null,
-                ErrorCode.USER_NOT_FOUND_ERROR);
-        long count = this.count(new LambdaQueryWrapper<UserRole>()
-                .eq(UserRole::getUserId, userRoleUpdateDTO.getUserId()));
-        ThrowUtils.throwIf(count > 0, ErrorCode.OPERATION_ERROR, "用户角色已存在");
-
-        UserRole userRole = new UserRole();
-        BeanUtil.copyProperties(userRoleUpdateDTO, userRole);
-        ThrowUtils.throwIf(!this.save(userRole), ErrorCode.OPERATION_ERROR);
-        return userRole.getId();
     }
 
     @Override
@@ -67,6 +52,9 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleMapper, UserRole> i
             userRole.setPermissions(userRoleUpdateDTO.getPermissions());
         }
         ThrowUtils.throwIf(!this.updateById(userRole), ErrorCode.OPERATION_ERROR);
+
+        //当前用户更新成功，目前需要清除redis中存储的token从而使过滤器拦截报错从而促使用户重新尝试登陆刷新用户的权限存储在token的数据
+        this.redisSecurityHandle.deleteSecurityKey(userRoleUpdateDTO.getUserId().toString());
         return true;
     }
 
@@ -76,6 +64,8 @@ public class UserRoleServiceImpl extends ServiceImpl<UserRoleMapper, UserRole> i
         boolean result = this.remove(new LambdaQueryWrapper<UserRole>()
                 .eq(UserRole::getUserId, userId));
         ThrowUtils.throwIf(!result, ErrorCode.NO_ROLE_ERROR);
+        //当前用户更新成功，目前需要清除redis中存储的token从而使过滤器拦截报错从而促使用户重新尝试登陆刷新用户的权限存储在token的数据
+        this.redisSecurityHandle.deleteSecurityKey(userId.toString());
     }
 
     private UserRoleVO toVO(UserRole userRole) {

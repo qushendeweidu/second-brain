@@ -31,6 +31,12 @@ public class UserProfile {
     private Long id;
     @TableField("user_id")
     private Long userId;
+    @TableField("nickname")
+    private String nickName;
+    @TableField("email")
+    private String email;
+    @TableField("phone")
+    private String phone;
     @TableField("avatar")
     private String avatar;
     @TableField("bio")

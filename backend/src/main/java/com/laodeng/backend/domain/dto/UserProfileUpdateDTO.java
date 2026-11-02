@@ -22,6 +22,12 @@ public class UserProfileUpdateDTO {
 
     // 用户id
     private Long userId;
+    // 用户昵称
+    private String nickName;
+    // 邮箱
+    private String email;
+    // 电话
+    private String phone;
     //用户头像
     private String avatar;
     // 用户简介

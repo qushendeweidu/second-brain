@@ -132,6 +132,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         if (userProfile != null) {
             userVO.setAvatar(userProfile.getAvatar());
+            userVO.setBio(userProfile.getBio());
+            userVO.setNickName(userProfile.getNickName());
+            userVO.setEmail(userProfile.getEmail());
+            userVO.setPhone(userProfile.getPhone());
         }
         return userVO;
     }
@@ -155,14 +159,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (CharSequenceUtil.isNotBlank(userUpdateDTO.getPassword())) {
             user.setPassword(this.passwordEncoder.encode(userUpdateDTO.getPassword()));
         }
-        if (userUpdateDTO.getNickName() != null) {
-            user.setNickName(userUpdateDTO.getNickName());
-        }
-        if (userUpdateDTO.getEmail() != null) {
-            user.setEmail(userUpdateDTO.getEmail());
-        }
-        if (userUpdateDTO.getPhone() != null) {
-            user.setPhone(userUpdateDTO.getPhone());
+        if (userUpdateDTO.getNickName() != null || userUpdateDTO.getEmail() != null || userUpdateDTO.getPhone() != null || userUpdateDTO.getBio() != null) {
+            UserProfile userProfile = this.userProfileService.getOne(
+                    new LambdaQueryWrapper<UserProfile>().eq(UserProfile::getUserId, userUpdateDTO.getId())
+            );
+            ThrowUtils.throwIf(userProfile == null, ErrorCode.USER_NOT_FOUND_ERROR);
+            if (userUpdateDTO.getNickName() != null) {
+                userProfile.setNickName(userUpdateDTO.getNickName());
+            }
+            if (userUpdateDTO.getEmail() != null) {
+                userProfile.setEmail(userUpdateDTO.getEmail());
+            }
+            if (userUpdateDTO.getPhone() != null) {
+                userProfile.setPhone(userUpdateDTO.getPhone());
+            }
+            if (userUpdateDTO.getBio() != null) {
+                userProfile.setBio(userUpdateDTO.getBio());
+            }
+            ThrowUtils.throwIf(!this.userProfileService.updateById(userProfile), ErrorCode.USER_UPDATE_ERROR);
         }
         if (userUpdateDTO.getStatus() != null) {
             user.setStatus(userUpdateDTO.getStatus());

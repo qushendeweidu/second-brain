@@ -37,5 +37,8 @@ public class UserCreateDTO {
     @Size(max = 255)
     private String phone;
 
+    @Size(max = 255)
+    private String bio;
+
     private Integer status;
 }

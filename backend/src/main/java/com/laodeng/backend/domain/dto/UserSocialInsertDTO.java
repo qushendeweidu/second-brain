@@ -1,7 +1,5 @@
 package com.laodeng.backend.domain.dto;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,21 +7,24 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
 /**
- * 用户资料创建请求。
+ * @author laodeng
+ * @version v1.0
+ * @date 2026/10/31 22:13
+ * @description 用户身份类插入DTO类
  */
+
 @Data
 @Builder
 @Accessors(chain = true)
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserProfileCreateDTO {
+public class UserSocialInsertDTO {
 
-    @NotNull
     private Long userId;
 
-    @Size(max = 255)
-    private String avatar;
+    private String provider;
 
-    @Size(max = 255)
-    private String bio;
+    private String providerUid;
+
+    private String providerLogin;
 }

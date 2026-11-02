@@ -7,12 +7,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.config.properties.TokenProperties;
-import com.laodeng.backend.domain.dto.UserProfileCreateDTO;
 import com.laodeng.backend.domain.dto.UserProfileUpdateDTO;
 import com.laodeng.backend.domain.po.UserProfile;
 import com.laodeng.backend.domain.vo.UserProfileVO;
 import com.laodeng.backend.exception.ThrowUtils;
-import com.laodeng.backend.mapper.UserMapper;
 import com.laodeng.backend.mapper.UserProfileMapper;
 import com.laodeng.backend.service.UserProfileService;
 import com.laodeng.backend.utils.JwtUtils;
@@ -43,7 +41,6 @@ import java.util.stream.Collectors;
 public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserProfile> implements UserProfileService {
     private final MinIOUtils minIOUtils;
     private final JwtUtils jwtUtils;
-    private final UserMapper userMapper;
     private final TokenProperties tokenProperties;
     private final AntPathMatcher rolematcher = new AntPathMatcher();
 
@@ -63,6 +60,15 @@ public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserP
         ThrowUtils.throwIf(userProfileUpdateDTO.getUserId() == null, ErrorCode.PARAMS_ERROR);
         checkManagePermission(userProfileUpdateDTO.getUserId(), request);
         UserProfile userProfile = getProfile(userProfileUpdateDTO.getUserId());
+        if (userProfileUpdateDTO.getNickName() != null) {
+            userProfile.setNickName(userProfileUpdateDTO.getNickName());
+        }
+        if (userProfileUpdateDTO.getEmail() != null) {
+            userProfile.setEmail(userProfileUpdateDTO.getEmail());
+        }
+        if (userProfileUpdateDTO.getPhone() != null) {
+            userProfile.setPhone(userProfileUpdateDTO.getPhone());
+        }
         if (userProfileUpdateDTO.getBio() != null) {
             userProfile.setBio(userProfileUpdateDTO.getBio());
         }
@@ -81,27 +87,10 @@ public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserP
     }
 
     @Override
-    public UserProfileVO getUserProfileBySelf(HttpServletRequest request) {
-        String token = request.getHeader(tokenProperties.getGeneration());
-        ThrowUtils.throwIf(token == null || token.isEmpty(), ErrorCode.TOKEN_ERROR);
-        Long userId = this.jwtUtils.extractId(token);
-        return toVO(getProfile(userId));
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createUserProfile(UserProfileCreateDTO userProfileCreateDTO, HttpServletRequest request) {
-        Long userId = userProfileCreateDTO.getUserId();
-        checkManagePermission(userId, request);
-        ThrowUtils.throwIf(this.userMapper.selectById(userId) == null, ErrorCode.USER_NOT_FOUND_ERROR);
-        long count = this.count(new LambdaQueryWrapper<UserProfile>()
-                .eq(UserProfile::getUserId, userId));
-        ThrowUtils.throwIf(count > 0, ErrorCode.OPERATION_ERROR, "用户资料已存在");
-
-        UserProfile userProfile = new UserProfile();
-        BeanUtil.copyProperties(userProfileCreateDTO, userProfile);
-        ThrowUtils.throwIf(!this.save(userProfile), ErrorCode.OPERATION_ERROR);
-        return userProfile.getId();
+    public UserProfileVO getUserProfileBySelf() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        ThrowUtils.throwIf(auth == null || !(auth.getPrincipal() instanceof Long), ErrorCode.NOT_LOGIN_ERROR);
+        return toVO(getProfile((Long) auth.getPrincipal()));
     }
 
     @Override

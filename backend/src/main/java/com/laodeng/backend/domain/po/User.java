@@ -38,15 +38,6 @@ public class User {
     @TableField("password")
     private String password;
 
-    @TableField("nickname")
-    private String nickName;
-
-    @TableField("email")
-    private String email;
-
-    @TableField("phone")
-    private String phone;
-
     @TableField("status")
     private Integer status;
 

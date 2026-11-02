@@ -58,8 +58,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.info("当前线程: {}", Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
         try {
-            String shortToken = request.getHeader(tokenProperties.getGeneration()); // 从请求中获取短时token
-            String refreshToken = request.getHeader(tokenProperties.getRefresh()); // 从请求中获取长Token
+            String shortToken = request.getHeader(this.tokenProperties.getGeneration()); // 从请求中获取短时token
+            String refreshToken = request.getHeader(this.tokenProperties.getRefresh()); // 从请求中获取长Token
             //判断当前长短token是否为空一般情况下会首先去登录因为登录不会进入过滤器
             if (ObjectUtil.isEmpty(refreshToken) || ObjectUtil.isEmpty(shortToken)) {
                 log.info("用户Token为空");
@@ -75,11 +75,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             //判断当前长时token是否存在
             String redisToken = this.redisSecurityHandle.getSecurityKey(userId.toString());
             ThrowUtils.throwIf(ObjectUtil.isEmpty(redisToken),ErrorCode.TOKEN_ERROR);
-            // 如果当前长时token存在但是与reids不一致因为此时长时token已经校验成功所以直接替换redis的长时token
-            if (ObjectUtil.notEqual(refreshToken,redisToken)){
-                // 更新当前redis中存储的长时token
-                this.redisSecurityHandle.createOrUpdateSecurityKey(userId.toString(),redisToken);
-            }
+            // 如果当前长时token存在但是与redis中存储的不一致时一律视作作废
+            ThrowUtils.throwIf(ObjectUtil.notEqual(refreshToken, redisToken), ErrorCode.TOKEN_ERROR);
             // 短时token如果无效直接抛异常
             // （长时token作为短时token的密钥）
             ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(shortToken,refreshToken),ErrorCode.TOKEN_ERROR);
@@ -132,6 +129,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 获取进入拦截器的请求的请求路径
         String path = request.getServletPath();
         // anyMatcher表示的是否有一个符合也就这里意思就是当前请求路径是否符合白名单中的任意一个路径
-        return this.authWhitelist.stream().anyMatch(p -> pathMatcher.match(p, path));
+        return this.authWhitelist.stream().anyMatch(p -> this.pathMatcher.match(p, path));
     }
 }

@@ -55,7 +55,10 @@ public enum ErrorCode {
 
     // ==================== redis错误 (600xx) ====================
     REDIS_ERROR(60001,"redis出现错误"),
-    REDIS_CONNECTION_ERROR(60002,"redis连接失败");
+    REDIS_CONNECTION_ERROR(60002,"redis连接失败"),
+
+    // ==================== 校验错误 (700xx) ====================
+    VERIFIER_ERROR(70001,"校验失败");
 
     private final int code;
 

@@ -34,6 +34,8 @@ public class UserDTO {
 
     private String phone;
 
+    private String bio;
+
     private Integer status;
 
     private List<String> roles;

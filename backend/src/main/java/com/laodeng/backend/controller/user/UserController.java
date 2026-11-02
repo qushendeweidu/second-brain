@@ -139,17 +139,6 @@ public class UserController {
     // ==================== 用户权限部分 ====================
 
     /**
-     * 创建用户权限
-     * @param userRoleUpdateDTO
-     * @return
-     */
-    @PreAuthorize("hasRole('ADMIN')")
-    @PostMapping("/role")
-    public R<Long> createUserRole(@Valid @RequestBody UserRoleUpdateDTO userRoleUpdateDTO) {
-        return R.success(this.userRoleService.createUserRole(userRoleUpdateDTO));
-    }
-
-    /**
      * 删除用户权限
      * @param userId
      * @return
@@ -186,20 +175,6 @@ public class UserController {
 
     // ==================== 用户配置文件部分 ====================
 
-    /**
-     * 创建用户配置文件类
-     * @param userProfileCreateDTO
-     * @param request
-     * @return
-     */
-    @PreAuthorize("hasRole('USER')")
-    @PostMapping("/profile")
-    public R<Long> createUserProfile(
-            @Valid @RequestBody UserProfileCreateDTO userProfileCreateDTO,
-            HttpServletRequest request
-    ) {
-        return R.success(this.userProfileService.createUserProfile(userProfileCreateDTO, request));
-    }
     /**
      * 删除用户配置文件类
      * @param userId
@@ -242,13 +217,12 @@ public class UserController {
 
     /**
      * 获取自身的用户配置文件
-     * @param request
      * @return
      */
     @PreAuthorize("hasRole('USER')")
     @GetMapping("/profile/myself")
-    public R<UserProfileVO> getUserProfileBySelf(HttpServletRequest request) {
-        return R.success(this.userProfileService.getUserProfileBySelf(request));
+    public R<UserProfileVO> getUserProfileBySelf() {
+        return R.success(this.userProfileService.getUserProfileBySelf());
     }
 
     /**

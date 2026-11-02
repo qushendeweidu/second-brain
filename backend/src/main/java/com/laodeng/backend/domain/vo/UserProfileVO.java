@@ -24,6 +24,9 @@ import java.time.LocalDateTime;
 public class UserProfileVO {
     
     private Long userId;
+    private String nickName;
+    private String email;
+    private String phone;
     private String avatar;
     private String bio;
     private LocalDateTime createTime;
