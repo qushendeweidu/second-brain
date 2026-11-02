@@ -1,6 +1,7 @@
 package com.laodeng.backend.service;
 
 import com.baomidou.mybatisplus.spring.service.IService;
+import com.laodeng.backend.domain.dto.UserRestrictDTO;
 import com.laodeng.backend.domain.po.UserRestrict;
 
 import java.util.concurrent.TimeUnit;
@@ -12,5 +13,13 @@ import java.util.concurrent.TimeUnit;
  * @description 用户请求数量限流
  */
 public interface UserRestrictService extends IService<UserRestrict> {
-    void restrictUserToken(Long userId, TimeUnit timeUnit,Long restrictId);
+    void restrictUserToken(UserRestrictDTO restrictDTO);
+
+    /**
+     * 查询用户限流配置
+     *
+     * @param userId 用户id
+     * @return 限流配置
+     */
+    UserRestrict getUserRestrict(Long userId);
 }

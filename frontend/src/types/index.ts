@@ -152,3 +152,19 @@ export interface GithubCallbackDTO {
   code: string
   state: string
 }
+
+/** 用户限流配置 UserRestrictVO（对应 user_restrict 表一行） */
+export interface UserRestrictVO {
+  id: number
+  userId: number
+  restrictRequest: number
+  windowSecond: number
+}
+
+/** 设置/更新用户限流（query/form 参数，后端无 @RequestBody） */
+export interface RestrictUserDTO {
+  userId: number
+  restrictRequest: number
+  windowSecond: number
+  timeUnit: TimeUnit
+}

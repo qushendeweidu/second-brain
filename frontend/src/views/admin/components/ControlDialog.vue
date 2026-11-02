@@ -13,7 +13,7 @@ import {
   ElTabPane,
   ElTabs,
 } from 'element-plus'
-import { blockUser, deleteUserSecurity, restrictUser } from '@/api'
+import { blockUser, deleteUserSecurity, getUserRestrict, restrictUser } from '@/api'
 import type { TimeUnit, UserVO } from '@/types'
 import { notify } from '@/utils/notify'
 
@@ -32,13 +32,22 @@ const UNIT_OPTIONS: { label: string; value: TimeUnit }[] = [
 const tab = ref<'block' | 'restrict' | 'kick'>('block')
 const busy = ref(false)
 const block = reactive({ blockedTime: 30, timeUnit: 'MINUTES' as TimeUnit, blocked: false })
-const restrict = reactive({ restrictId: 1, timeUnit: 'SECONDS' as TimeUnit })
+const restrict = reactive({ restrictRequest: 100, windowSecond: 60, timeUnit: 'SECONDS' as TimeUnit })
 
-watch(visible, (v) => {
+watch(visible, async (v) => {
   if (!v) return
   tab.value = 'block'
   Object.assign(block, { blockedTime: 30, timeUnit: 'MINUTES', blocked: false })
-  Object.assign(restrict, { restrictId: 1, timeUnit: 'SECONDS' })
+  Object.assign(restrict, { restrictRequest: 100, windowSecond: 60, timeUnit: 'SECONDS' })
+  // 回填该用户当前限流配置（无配置 / 查询失败时保持默认档位）
+  if (props.user) {
+    try {
+      const cfg = await getUserRestrict(props.user.id)
+      Object.assign(restrict, { restrictRequest: cfg.restrictRequest, windowSecond: cfg.windowSecond })
+    } catch {
+      /* 无配置（40002）或查询失败：使用默认档位 */
+    }
+  }
 })
 
 /**
@@ -70,7 +79,10 @@ function onBlock(): Promise<void> {
 /** 提交限流 */
 function onRestrict(): Promise<void> {
   const u = props.user!
-  return run(() => restrictUser(u.id, restrict.restrictId, restrict.timeUnit), '已对该用户启用限流')
+  return run(
+    () => restrictUser(u.id, restrict.restrictRequest, restrict.windowSecond, restrict.timeUnit),
+    '已对该用户启用限流',
+  )
 }
 
 /** 强制下线 / 解除临时封禁 */
@@ -111,16 +123,19 @@ function onKick(): Promise<void> {
 
       <ElTabPane label="限流" name="restrict">
         <ElForm label-width="84px" @submit.prevent>
-          <ElFormItem label="限流配置">
-            <ElInputNumber v-model="restrict.restrictId" :min="1" :step="1" step-strictly controls-position="right" />
+          <ElFormItem label="请求次数">
+            <ElInputNumber v-model="restrict.restrictRequest" :min="1" :step="1" step-strictly controls-position="right" />
           </ElFormItem>
-          <ElFormItem label="时间单位">
-            <ElSelect v-model="restrict.timeUnit" style="width: 140px">
-              <ElOption v-for="o in UNIT_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
-            </ElSelect>
+          <ElFormItem label="窗口时间">
+            <div class="btn-row" style="width: 100%">
+              <ElInputNumber v-model="restrict.windowSecond" :min="1" :step="1" step-strictly controls-position="right" />
+              <ElSelect v-model="restrict.timeUnit" style="width: 110px">
+                <ElOption v-for="o in UNIT_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+              </ElSelect>
+            </div>
           </ElFormItem>
         </ElForm>
-        <ElAlert type="info" :closable="false" title="配置 ID 对应 user_restrict 表，默认 1 号配置为 100 次 / 60 秒。" />
+        <ElAlert type="info" :closable="false" title="限流参数将自动保存为该用户的限流配置；窗口内请求超限将返回 40208 用户已被限流。" />
         <div class="btn-row" style="justify-content: flex-end; margin-top: 20px">
           <ElButton type="warning" :loading="busy" @click="onRestrict">启用限流</ElButton>
         </div>

@@ -68,12 +68,14 @@ VALUES (1, 1, '超级管理员', 'admin@example.com', '13800000001'),
 create table if not exists user_restrict
 (
     id bigint primary key comment '主键id',
+    user_id bigint not null comment '关联用户id',
     restrict_request bigint not null comment '请求限制次数',
-    window_second bigint not null comment '一段限制时间'
+    window_second bigint not null comment '一段限制时间',
+    unique key uk_user_id (user_id)
 ) comment = '请求限流配置表';
 
-INSERT INTO user_restrict (id, restrict_request,window_second)
-    VALUE (1,100,60);
+INSERT INTO user_restrict (id, user_id, restrict_request,window_second)
+    VALUE (1, 1, 100, 60);
 
 
 CREATE TABLE IF NOT EXISTS user_social(

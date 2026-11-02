@@ -1,7 +1,13 @@
 package com.laodeng.backend.service.impl;
 
+import cn.hutool.core.util.ObjectUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.laodeng.backend.common.ErrorCode;
+import com.laodeng.backend.domain.dto.UserRestrictDTO;
 import com.laodeng.backend.domain.po.UserRestrict;
+import com.laodeng.backend.exception.ThrowUtils;
 import com.laodeng.backend.handler.RedisDataHandle;
 import com.laodeng.backend.handler.RedisSecurityHandle;
 import com.laodeng.backend.mapper.UserRestrictMapper;
@@ -25,10 +31,37 @@ public class UserRestrictServiceImpl extends ServiceImpl<UserRestrictMapper, Use
     private final RedisSecurityHandle redisSecurityHandle;
 
     @Override
-    public void restrictUserToken(Long userId, TimeUnit timeUnit,Long restrictId) {
+    public void restrictUserToken(UserRestrictDTO restrictDTO) {
         log.info("当前正在对这个用户的长时Token进行限流");
-        UserRestrict userRestrict = this.getById(restrictId);
-        this.redisSecurityHandle.restrictUserToken(userId.toString(),userRestrict.getRestrictRequest(),userRestrict.getWindowSecond(),timeUnit);
+        UserRestrict userRestrict = this.getOne(new LambdaQueryWrapper<UserRestrict>()
+                .eq(UserRestrict::getUserId, restrictDTO.getUserId()));
+        ThrowUtils.throwIf(userRestrict == null, ErrorCode.NOT_FOUND_ERROR);
+
+        // DTO 传值与库表不一致时，将最新配置同步回 user_restrict 表
+        boolean needUpdate = false;
+        LambdaUpdateWrapper<UserRestrict> updateWrapper = new LambdaUpdateWrapper<>();
+        if (!ObjectUtil.equal(restrictDTO.getRestrictRequest(), userRestrict.getRestrictRequest())) {
+            updateWrapper.set(UserRestrict::getRestrictRequest, restrictDTO.getRestrictRequest());
+            needUpdate = true;
+        }
+        if (!ObjectUtil.equal(restrictDTO.getWindowSecond(), userRestrict.getWindowSecond())) {
+            updateWrapper.set(UserRestrict::getWindowSecond, restrictDTO.getWindowSecond());
+            needUpdate = true;
+        }
+        if (needUpdate) {
+            updateWrapper.eq(UserRestrict::getUserId, restrictDTO.getUserId());
+            ThrowUtils.throwIf(!this.update(updateWrapper), ErrorCode.OPERATION_ERROR);
+        }
+
+        this.redisSecurityHandle.restrictUserToken(restrictDTO.getUserId().toString(), restrictDTO.getRestrictRequest(), restrictDTO.getWindowSecond(), restrictDTO.getTimeUnit());
+    }
+
+    @Override
+    public UserRestrict getUserRestrict(Long userId) {
+        UserRestrict userRestrict = this.getOne(new LambdaQueryWrapper<UserRestrict>()
+                .eq(UserRestrict::getUserId, userId));
+        ThrowUtils.throwIf(userRestrict == null, ErrorCode.NOT_FOUND_ERROR);
+        return userRestrict;
     }
 
 }

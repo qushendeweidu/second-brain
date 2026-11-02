@@ -1,11 +1,13 @@
 package com.laodeng.backend.controller.user;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.laodeng.backend.annotation.RateLimit;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.common.PageResult;
 import com.laodeng.backend.common.R;
 import com.laodeng.backend.config.properties.TokenProperties;
 import com.laodeng.backend.domain.dto.*;
+import com.laodeng.backend.domain.po.UserRestrict;
 import com.laodeng.backend.domain.vo.UserProfileVO;
 import com.laodeng.backend.domain.vo.UserRoleVO;
 import com.laodeng.backend.domain.vo.UserVO;
@@ -121,6 +123,7 @@ public class UserController {
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/list")
+    @RateLimit
     public R<PageResult<UserVO>> getUserVOByUserDTO(@RequestBody UserDTO userDTO) {
         PageResult<UserVO> userVOByUserDTO = this.userService.getUserVOByUserDTO(userDTO);
         return R.success(userVOByUserDTO);
@@ -264,14 +267,24 @@ public class UserController {
 
     /**
      * 给用户的一段长时Token做限流
-     * @param userId 用户id
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/restrictUserToken")
-    public R<Void> restrictUserToken(Long userId, Long restrictId,TimeUnit timeUnit){
-        this.userRestrictService.restrictUserToken(userId,timeUnit,restrictId);
+    public R<Void> restrictUserToken(UserRestrictDTO restrictDTO){
+        this.userRestrictService.restrictUserToken(restrictDTO);
         return R.success();
+    }
+
+    /**
+     * 查询用户限流配置
+     * @param userId 用户id
+     * @return 限流配置
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/restrictUserToken/{userId}")
+    public R<UserRestrict> getUserRestrict(@PathVariable Long userId) {
+        return R.success(this.userRestrictService.getUserRestrict(userId));
     }
 
 }

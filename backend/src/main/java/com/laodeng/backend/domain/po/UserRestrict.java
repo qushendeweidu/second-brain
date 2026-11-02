@@ -28,6 +28,11 @@ public class UserRestrict {
     private Long id;
 
     /**
+     * 关联用户id
+     */
+    private Long userId;
+
+    /**
      * 限制请求次数
      */
     private Long restrictRequest;

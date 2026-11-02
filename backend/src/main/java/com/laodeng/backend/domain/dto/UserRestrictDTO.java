@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * @author laodeng
  * @version v1.0
@@ -20,6 +22,10 @@ import lombok.experimental.Accessors;
 @AllArgsConstructor
 public class UserRestrictDTO {
     /**
+     * 关联用户id
+     */
+    private Long userId;
+    /**
      * 限制请求次数
      */
     private Long restrictRequest;
@@ -27,5 +33,9 @@ public class UserRestrictDTO {
      * 一段限制次数请求的刷新时间
      */
     private Long windowSecond;
+    /**
+     * 限制的时间单位
+     */
+    private TimeUnit timeUnit;
 
 }

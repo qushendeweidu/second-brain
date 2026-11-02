@@ -10,6 +10,7 @@ import type {
   UserProfileUpdateDTO,
   UserProfileVO,
   UserQueryDTO,
+  UserRestrictVO,
   UserRoleUpdateDTO,
   UserRoleVO,
   UserUpdateDTO,
@@ -161,14 +162,27 @@ export const deleteUserSecurity = (userId: number) =>
   request<null>({ url: `/user/deleteUserSecurity/${userId}`, method: 'delete' })
 
 /**
- * 对用户限流（参数均为 query）。
+ * 设置/更新用户限流（参数为 query，后端无 @RequestBody）。
  * @param userId 用户 id
- * @param restrictId 限流配置 id
+ * @param restrictRequest 窗口内允许的请求次数
+ * @param windowSecond 窗口长度数值（与 timeUnit 换算成秒）
  * @param timeUnit 时间单位
  * @returns null
  */
-export const restrictUser = (userId: number, restrictId: number, timeUnit: TimeUnit) =>
-  request<null>({ url: '/user/restrictUserToken', method: 'post', params: { userId, restrictId, timeUnit } })
+export const restrictUser = (userId: number, restrictRequest: number, windowSecond: number, timeUnit: TimeUnit) =>
+  request<null>({
+    url: '/user/restrictUserToken',
+    method: 'post',
+    params: { userId, restrictRequest, windowSecond, timeUnit },
+  })
+
+/**
+ * 查询用户限流配置（无配置时后端返回 40002，调用方静默处理）。
+ * @param userId 用户 id
+ * @returns 用户限流配置
+ */
+export const getUserRestrict = (userId: number) =>
+  request<UserRestrictVO>({ url: `/user/restrictUserToken/${userId}`, method: 'get', silent: true })
 
 /* ============ GitHub 绑定 ============
  * 后端三个接口均从 SecurityContext 取当前用户（不再解析请求头 token），

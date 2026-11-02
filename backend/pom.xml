@@ -130,6 +130,12 @@
             <artifactId>kafka-clients</artifactId>
             <version>4.2.1</version>
         </dependency>
+
+        <!-- AOP 支持（Boot 4 已拆分 starter，引 weaver 即自动启用 @Aspect） -->
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

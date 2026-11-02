@@ -56,9 +56,7 @@ public class RedisSecurityHandle {
                         local window = tonumber(ARGV[2])
                         
                         local current = redis.call('INCR', key)
-                        if current == 1 then
-                            redis.call('EXPIRE', key, window)
-                        end
+                        redis.call('EXPIRE', key, window)
                         
                         if current > limit then
                             return 0
@@ -138,7 +136,7 @@ public class RedisSecurityHandle {
     public void restrictUserToken(String key, long limit, long window, TimeUnit timeUnit){
         long seconds = Math.max(1,timeUnit.toSeconds(window)); // 将当前过期时间通过时间类型转化成秒
         seconds += ThreadLocalRandom.current().nextLong(0,10);
-        key = decorateRestictKey(key,window); // 包装传入的key
+        key = decorateRestictKey(key); // 包装传入的key
         long result = this.restrictRedisTemplate.execute(
                 USER_RESTRICT_KEY_SCRIPT,
                 List.of(key),
@@ -246,12 +244,8 @@ public class RedisSecurityHandle {
      * @param key
      * @return 修改之后的限流key
      */
-    private String decorateRestictKey(String key,long windowSeconds) {
-        long epochSecond = LocalDateTime.now()
-                .atZone(ZoneId.systemDefault()) //从JVM中获取当前系统时区
-                .toEpochSecond(); // 将时间自动转化为自计算机元年以来度过的秒数
-        long restrictId = epochSecond/windowSeconds; // 直接除法会直接忽略掉小数如果无法整除从而保证了同一限制时间内id不变
-        return "restrict:"+ restrictId +":" + key + ":count";
+    private String decorateRestictKey(String key) {
+        return "restrict:" + key + ":count";
     }
 
 }
