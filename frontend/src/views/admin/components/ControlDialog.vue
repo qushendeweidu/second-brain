@@ -43,7 +43,11 @@ watch(visible, async (v) => {
   if (props.user) {
     try {
       const cfg = await getUserRestrict(props.user.id)
-      Object.assign(restrict, { restrictRequest: cfg.restrictRequest, windowSecond: cfg.windowSecond })
+      Object.assign(restrict, {
+        restrictRequest: cfg.restrictRequest,
+        windowSecond: cfg.windowSecond,
+        timeUnit: cfg.timeUnit,
+      })
     } catch {
       /* 无配置（40002）或查询失败：使用默认档位 */
     }

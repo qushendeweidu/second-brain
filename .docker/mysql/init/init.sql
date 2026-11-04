@@ -71,11 +71,12 @@ create table if not exists user_restrict
     user_id bigint not null comment '关联用户id',
     restrict_request bigint not null comment '请求限制次数',
     window_second bigint not null comment '一段限制时间',
+    time_unit VARCHAR(20) NOT NULL DEFAULT 'SECONDS',
     unique key uk_user_id (user_id)
 ) comment = '请求限流配置表';
 
-INSERT INTO user_restrict (id, user_id, restrict_request,window_second)
-    VALUE (1, 1, 100, 60);
+INSERT INTO user_restrict (id, user_id, restrict_request,window_second,time_unit)
+    VALUE (1, 1, 100, 60,'SECONDS');
 
 
 CREATE TABLE IF NOT EXISTS user_social(

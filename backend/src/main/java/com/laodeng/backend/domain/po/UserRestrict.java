@@ -7,6 +7,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * @author laodeng
  * @version v1.0
@@ -40,5 +42,9 @@ public class UserRestrict {
      * 一段限制次数请求的刷新时间
      */
     private Long windowSecond;
+    /**
+     * 刷新时间单位
+     */
+    private TimeUnit timeUnit;
 
 }

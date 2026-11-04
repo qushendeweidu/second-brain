@@ -35,7 +35,15 @@ public class UserRestrictServiceImpl extends ServiceImpl<UserRestrictMapper, Use
         log.info("当前正在对这个用户的长时Token进行限流");
         UserRestrict userRestrict = this.getOne(new LambdaQueryWrapper<UserRestrict>()
                 .eq(UserRestrict::getUserId, restrictDTO.getUserId()));
-        ThrowUtils.throwIf(userRestrict == null, ErrorCode.NOT_FOUND_ERROR);
+        if (ObjectUtil.isEmpty(userRestrict)){
+            userRestrict= UserRestrict.builder()
+                    .restrictRequest(restrictDTO.getRestrictRequest())
+                    .windowSecond(restrictDTO.getWindowSecond())
+                    .userId(restrictDTO.getUserId())
+                    .timeUnit(restrictDTO.getTimeUnit())
+                    .build();
+            ThrowUtils.throwIf(!this.save(userRestrict),ErrorCode.OPERATION_ERROR);
+        }
 
         // DTO 传值与库表不一致时，将最新配置同步回 user_restrict 表
         boolean needUpdate = false;
@@ -46,6 +54,10 @@ public class UserRestrictServiceImpl extends ServiceImpl<UserRestrictMapper, Use
         }
         if (!ObjectUtil.equal(restrictDTO.getWindowSecond(), userRestrict.getWindowSecond())) {
             updateWrapper.set(UserRestrict::getWindowSecond, restrictDTO.getWindowSecond());
+            needUpdate = true;
+        }
+        if (!ObjectUtil.equal(restrictDTO.getTimeUnit(),userRestrict.getTimeUnit())){
+            updateWrapper.set(UserRestrict::getTimeUnit,restrictDTO.getTimeUnit());
             needUpdate = true;
         }
         if (needUpdate) {

@@ -43,7 +43,7 @@ public class RateLimitAspect {
     public Object rateLimitHandle(ProceedingJoinPoint proceedingJoinPoint) throws Throwable {
     Long userId = currentUserId();
         if (ObjectUtil.isNotEmpty(userId)) {
-        UserRestrict restrict = userRestrictService.getOne(
+        UserRestrict restrict = this.userRestrictService.getOne(
                 new LambdaQueryWrapper<UserRestrict>().eq(UserRestrict::getUserId, userId));
         if (ObjectUtil.isNotEmpty(restrict)) {
             try {
@@ -52,7 +52,7 @@ public class RateLimitAspect {
                         String.valueOf(userId),
                         restrict.getRestrictRequest(),
                         restrict.getWindowSecond(),
-                        TimeUnit.SECONDS);
+                        restrict.getTimeUnit()!=null?restrict.getTimeUnit():TimeUnit.SECONDS);
             } catch (RedisConnectionFailureException | RedisSystemException e) {
                 // Redis 不可用时降级放行，避免限流故障拖垮正常请求
                 log.warn("限流检查失败，降级放行: userId={}, err={}", userId, e.getMessage());

@@ -159,6 +159,7 @@ export interface UserRestrictVO {
   userId: number
   restrictRequest: number
   windowSecond: number
+  timeUnit: TimeUnit
 }
 
 /** 设置/更新用户限流（query/form 参数，后端无 @RequestBody） */

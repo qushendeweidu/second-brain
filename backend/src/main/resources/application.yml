@@ -2,7 +2,7 @@ spring:
   application:
     name: second-brain
   datasource:
-    url: jdbc:mysql://localhost:5506/second_brain?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:5506/second_brain?useSSL=false&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
