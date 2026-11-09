@@ -4,7 +4,7 @@ import type {
   GithubCallbackDTO,
   LoginDTO,
   PageResult,
-  TimeUnit,
+  RestrictUserDTO,
   TokenMap,
   UserCreateDTO,
   UserProfileUpdateDTO,
@@ -44,21 +44,16 @@ export const register = (data: LoginDTO) =>
 export const getMyProfile = () => request<UserProfileVO>({ url: '/user/profile/myself', method: 'get' })
 
 /**
- * 更新资料（后端无 @RequestBody，按 form-urlencoded 提交，空值字段不提交）。
+ * 更新资料（JSON body，空值字段不提交）。
  * @param dto 资料字段，userId 必填
  * @returns 是否成功
  */
 export const updateProfile = (dto: UserProfileUpdateDTO) => {
-  const form = new URLSearchParams()
+  const body: Record<string, unknown> = {}
   Object.entries(dto).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') form.append(k, String(v))
+    if (v !== undefined && v !== null && v !== '') body[k] = v
   })
-  return request<boolean>({
-    url: '/user/updateUserProfile',
-    method: 'patch',
-    data: form,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-  })
+  return request<boolean>({ url: '/user/updateUserProfile', method: 'patch', data: body })
 }
 
 /**
@@ -162,19 +157,12 @@ export const deleteUserSecurity = (userId: number) =>
   request<null>({ url: `/user/deleteUserSecurity/${userId}`, method: 'delete' })
 
 /**
- * 设置/更新用户限流（参数为 query，后端无 @RequestBody）。
- * @param userId 用户 id
- * @param restrictRequest 窗口内允许的请求次数
- * @param windowSecond 窗口长度数值（与 timeUnit 换算成秒）
- * @param timeUnit 时间单位
+ * 设置/更新用户限流（JSON body）。
+ * @param dto 限流参数
  * @returns null
  */
-export const restrictUser = (userId: number, restrictRequest: number, windowSecond: number, timeUnit: TimeUnit) =>
-  request<null>({
-    url: '/user/restrictUserToken',
-    method: 'post',
-    params: { userId, restrictRequest, windowSecond, timeUnit },
-  })
+export const restrictUser = (dto: RestrictUserDTO) =>
+  request<null>({ url: '/user/restrictUserToken', method: 'post', data: dto })
 
 /**
  * 查询用户限流配置（无配置时后端返回 40002，调用方静默处理）。

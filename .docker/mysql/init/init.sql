@@ -89,3 +89,16 @@ CREATE TABLE IF NOT EXISTS user_social(
                              UNIQUE KEY uk_provider_uid (provider, provider_uid),   -- 一个 GitHub 只能绑一个用户
                              UNIQUE KEY uk_user_provider (user_id, provider)        -- 一个用户只能绑一个 GitHub
 ) comment = '用户第三方平台身份绑定表';
+
+create table if not exists goods
+(
+    id             bigint primary key auto_increment comment '商品主键id',
+    name           varchar(255)   not null comment '商品名称',
+    price          decimal(10, 2) not null comment '商品价格',
+    image          varchar(255)   default null comment '商品图片',
+    seller_user_id bigint         not null comment '卖家用户id',
+    description    varchar(1000)  default null comment '商品简介',
+    create_time    timestamp      default current_timestamp comment '创建时间',
+    update_time    timestamp      default current_timestamp on update current_timestamp comment '更新时间',
+    key idx_seller_user_id (seller_user_id)
+) comment = '商品表';

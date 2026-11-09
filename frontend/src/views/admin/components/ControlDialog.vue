@@ -84,7 +84,7 @@ function onBlock(): Promise<void> {
 function onRestrict(): Promise<void> {
   const u = props.user!
   return run(
-    () => restrictUser(u.id, restrict.restrictRequest, restrict.windowSecond, restrict.timeUnit),
+    () => restrictUser({ userId: u.id, ...restrict }),
     '已对该用户启用限流',
   )
 }

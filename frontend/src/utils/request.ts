@@ -51,7 +51,7 @@ export function refreshShortToken(): Promise<string> {
         if (res.data?.code !== 200 || !res.data.data) {
           throw new BizError(res.data?.code ?? 401, res.data?.msg ?? '登录已失效')
         }
-        setTokens({ Authorization: res.data.data })
+        setTokens({ AccessToken: res.data.data })
         return res.data.data
       })
       .finally(() => {
@@ -84,18 +84,18 @@ function rejectBiz(code: number, msg: string, config?: AxiosRequestConfig): Prom
 
 instance.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   if (config.skipAuth) return config
-  let { Authorization, RefreshToken } = getTokens()
+  let { AccessToken, RefreshToken } = getTokens()
   // 有长 token 但短 token 缺失/过期 → 先换取短 token，避免请求必然 401
-  if (RefreshToken && isExpired(Authorization)) {
+  if (RefreshToken && isExpired(AccessToken)) {
     try {
-      Authorization = await refreshShortToken()
+      AccessToken = await refreshShortToken()
     } catch (e) {
       const err = e as BizError
       handleRelogin(err.message)
       throw err
     }
   }
-  if (Authorization) config.headers.set('Authorization', Authorization)
+  if (AccessToken) config.headers.set('AccessToken', AccessToken)
   if (RefreshToken) config.headers.set('RefreshToken', RefreshToken)
   return config
 })

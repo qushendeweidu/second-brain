@@ -1,5 +1,6 @@
 package com.laodeng.backend.utils;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.config.properties.MinIOProperties;
 import com.laodeng.backend.exception.BusinessException;
@@ -93,7 +94,7 @@ public class MinIOUtils {
      * @return 对象名（桶内相对路径），用于后续拼接 URL 或落库
      */
     public String uploadFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
+        if (ObjectUtil.isEmpty(file) || file.isEmpty()) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "上传文件不能为空");
         }
         String objectName = generateObjectName(file.getOriginalFilename());
@@ -146,7 +147,7 @@ public class MinIOUtils {
      * 并顺带把单项失败收集出来打日志。
      */
     public void deleteBatch(List<String> objectNames) {
-        if (objectNames == null || objectNames.isEmpty()) {
+        if (ObjectUtil.isEmpty(objectNames)) {
             return;
         }
         List<DeleteObject> targets = objectNames.stream().map(DeleteObject::new).toList();
@@ -240,7 +241,7 @@ public class MinIOUtils {
      */
     private String resolveContentType(MultipartFile file) {
         String ct = file.getContentType(); //先去获取一下文件上传请求的时候文件携带的文件类型字段
-        if (ct != null && !ct.equals("application/octet-stream")) {
+        if (ObjectUtil.isNotEmpty(ct) && ObjectUtil.notEqual(ct, "application/octet-stream")) {
             //如果当前类型字段不是默认字段的话就按照传输的请求头携带的文件类型
             return ct;
         }

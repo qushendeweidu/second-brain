@@ -71,7 +71,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         ThrowUtils.throwIf(ObjectUtil.isEmpty(user), ErrorCode.NOT_FOUND_ERROR); //当前账户不存在时拦截
         ThrowUtils.throwIf(ObjectUtil.equal(user.getStatus(),0),ErrorCode.USER_BLOCKED); //当前账户被锁定时拦截
         // 检测当前token的userId的redis是否被短时封禁
-        ThrowUtils.throwIf(ObjectUtil.equal(redisSecurityHandle.getSecurityKey(user.getId().toString()),"0"),ErrorCode.USER_BLOCKED);
+        ThrowUtils.throwIf(ObjectUtil.equal(this.redisSecurityHandle.getSecurityKey(user.getId().toString()),"0"),ErrorCode.USER_BLOCKED);
         log.info("用户:{} 登陆", user.getUsername());
         Map<String,String> userToken = new HashMap<>(); // 用于存储长短Token的Map
         // 判断当前用户的密码是否正确
@@ -79,24 +79,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 用户登录通过创建用户的id
         Long userId = user.getId();
         String freshToken = request.getHeader(this.tokenProperties.getRefresh());
-        String shortToken = request.getHeader(this.tokenProperties.getGeneration());
+        String accessToken = request.getHeader(this.tokenProperties.getAccess());
+        String redisToken = this.redisSecurityHandle.getSecurityKey(userId.toString());
         if (ObjectUtil.isEmpty(freshToken) ||
                 !this.jwtUtils.isTokenValid(freshToken) ||
-                !ObjectUtil.equal(userId,this.jwtUtils.extractId(freshToken))) { // 判断当前是否携带长Token或者是否有效
+                ObjectUtil.notEqual(userId,this.jwtUtils.extractRefreshId(freshToken)) ||
+                ObjectUtil.notEqual(freshToken, redisToken)
+        ) { // 判断当前是否携带长Token或者是否有效
             //如果未存在Token则直接创建一个新的长时Token
-            String newFreshToken = this.jwtUtils.createToken(userId);
+            String newFreshToken = this.jwtUtils.createRefreshToken(userId);
             // 将长Token放到Map中
             userToken.put(this.tokenProperties.getRefresh(),newFreshToken);
             // 更新redis中的长时token
-            redisSecurityHandle.createOrUpdateSecurityKey(userId.toString(),newFreshToken);
-            // 更新长时Token
-            freshToken = newFreshToken;
+            this.redisSecurityHandle.createOrUpdateSecurityKey(userId.toString(),newFreshToken);
         }
-        if (ObjectUtil.isEmpty(shortToken) || !this.jwtUtils.isTokenValid(shortToken,freshToken)){ // 判断当前是否携带短Token或者是否有效
+        if (ObjectUtil.isEmpty(accessToken)
+                || !this.jwtUtils.isAccessTokenValid(accessToken)
+                || ObjectUtil.notEqual(userId,this.jwtUtils.extractAccessId(accessToken))
+        ){ // 判断当前是否携带短Token或者是否有效
             //如果未存在Token则直接创建一个新的短时Token
-            String newShortToken = this.jwtUtils.createToken(userId,freshToken);
+            String newaccessToken = this.jwtUtils.createAccessToken(userId);
             // 将短Token放到Map中
-            userToken.put(this.tokenProperties.getGeneration(),newShortToken);
+            userToken.put(this.tokenProperties.getAccess(),newaccessToken);
         }
         return userToken;
     }
@@ -219,7 +223,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      */
     @Override
     public void blockedUser(BlockedUserDTO blockedUserDTO) {
-        ThrowUtils.throwIf(blockedUserDTO.getUserId() == null || ObjectUtil.isEmpty(blockedUserDTO.getUserId()), ErrorCode.PARAMS_EMPTY_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(blockedUserDTO.getUserId()), ErrorCode.PARAMS_EMPTY_ERROR);
         User user = this.getById(blockedUserDTO.getUserId());
         ThrowUtils.throwIf(ObjectUtil.isEmpty(user), ErrorCode.USER_NOT_FOUND_ERROR);
         if (ObjectUtil.isNotEmpty(blockedUserDTO.getBlockedTime())) {
@@ -230,7 +234,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                     blockedUserDTO.getTimeUnit()
             );
         }
-        if (ObjectUtil.isNotEmpty(blockedUserDTO.getBlocked()) && Boolean.TRUE.equals(blockedUserDTO.getBlocked())) {
+        if (ObjectUtil.isNotEmpty(blockedUserDTO.getBlocked()) && ObjectUtil.equal(Boolean.TRUE, blockedUserDTO.getBlocked())) {
             if (ObjectUtil.equal(user.getStatus(), 0)) {
                 log.info("当前账户已经被封禁");
             }
@@ -284,21 +288,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @param request
      * @return
      */
-    public String getShortToken(HttpServletRequest request){
-        String refreshToken = request.getHeader(tokenProperties.getRefresh());
-        User user = this.getById(this.jwtUtils.extractId(refreshToken));
-        // 首先判断当前用户是否已经被封号或者用户不存在
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(user)|| ObjectUtil.equal(user.getStatus(),0),ErrorCode.TOKEN_ERROR );
-        // 若用户已经被暂时封禁则抛异常
-        ThrowUtils.throwIf(ObjectUtil.equal(redisSecurityHandle.getSecurityKey(user.getId().toString()),"0"),ErrorCode.USER_BLOCKED);
-        // 创建用户id的Long对象
-        Long userId = user.getId();
+    public String getAccessToken(HttpServletRequest request){
+        String refreshToken = request.getHeader(this.tokenProperties.getRefresh());
         //判断当前的刷新token是否有效而且不为空
         ThrowUtils.throwIf(ObjectUtil.isEmpty(refreshToken) ||!this.jwtUtils.isTokenValid(refreshToken),ErrorCode.TOKEN_ERROR);
+        Long userId = this.jwtUtils.extractRefreshId(refreshToken);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userId),ErrorCode.USER_NOT_FOUND_ERROR);
+        User user = this.getById(userId);
+        // 首先判断当前用户是否已经被封号或者用户不存在
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(user)|| ObjectUtil.equal(user.getStatus(),0),ErrorCode.TOKEN_ERROR );
+        // Redis 是长 token 会话状态的唯一真相：key 缺失=已注销/过期，值为 "0"=短时封禁，值不一致=被顶号或踢下线
+        String redisToken = this.redisSecurityHandle.getSecurityKey(userId.toString());
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(redisToken), ErrorCode.TOKEN_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.equal(redisToken, "0"), ErrorCode.USER_BLOCKED);
+        ThrowUtils.throwIf(ObjectUtil.notEqual(refreshToken, redisToken), ErrorCode.TOKEN_ERROR);
+
         // 当前长时token是有效的
-        String shortToken = this.jwtUtils.createToken(userId,refreshToken);
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(shortToken),ErrorCode.TOKEN_CREATE_ERROR);
-        return shortToken;
+        String accessToken = this.jwtUtils.exchangeToken(refreshToken);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(accessToken),ErrorCode.TOKEN_CREATE_ERROR);
+        return accessToken;
 
     }
 

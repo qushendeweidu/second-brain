@@ -27,7 +27,7 @@ export interface LoginDTO {
 }
 
 /** 登录响应：key 为请求头名，值为 token，可能只返回其中一个 */
-export type TokenMap = Partial<Record<'Authorization' | 'RefreshToken', string>>
+export type TokenMap = Partial<Record<'AccessToken' | 'RefreshToken', string>>
 
 /** 用户状态：1 正常，0 禁用 */
 export type UserStatus = 0 | 1
@@ -162,7 +162,7 @@ export interface UserRestrictVO {
   timeUnit: TimeUnit
 }
 
-/** 设置/更新用户限流（query/form 参数，后端无 @RequestBody） */
+/** 设置/更新用户限流（JSON body） */
 export interface RestrictUserDTO {
   userId: number
   restrictRequest: number

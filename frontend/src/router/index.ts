@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { getTokens } from '@/utils/token'
+import { refreshShortToken } from '@/utils/request'
 import { notify } from '@/utils/notify'
 
 declare module 'vue-router' {
@@ -56,8 +58,18 @@ const router = createRouter({
 })
 
 /** 路由守卫：未登录跳登录页；角色不符跳个人中心 */
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const store = useUserStore()
+  const { RefreshToken, AccessToken } = getTokens()
+  // 冷启动（新标签页/会话结束）只有长 token 时，先换短 token，否则解析不到角色权限
+  if (RefreshToken && !AccessToken) {
+    try {
+      await refreshShortToken()
+    } catch {
+      // 换取失败不中断跳转，后续请求会触发重新登录
+    }
+  }
+  store.syncClaims()
   if (to.meta.guestOnly && store.isLogin) return '/me'
   if (!to.meta.public && !store.isLogin) {
     return { path: '/login', query: { redirect: to.fullPath } }

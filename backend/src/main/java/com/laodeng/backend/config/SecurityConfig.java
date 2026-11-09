@@ -2,6 +2,7 @@ package com.laodeng.backend.config;
 
 import com.laodeng.backend.config.properties.AuthWhitelistProperties;
 import com.laodeng.backend.config.properties.FrontendProperties;
+import com.laodeng.backend.config.properties.TokenProperties;
 import com.laodeng.backend.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -37,15 +38,18 @@ public class SecurityConfig {
     private final FrontendProperties frontendProperties;
     private final AuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final AuthWhitelistProperties authWhitelistProperties;
+    private final TokenProperties tokenProperties;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
                           FrontendProperties frontendProperties,
                           AuthenticationEntryPoint jwtAuthenticationEntryPoint,
-                          AuthWhitelistProperties authWhitelistProperties) {
+                          AuthWhitelistProperties authWhitelistProperties,
+                          TokenProperties tokenProperties) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.frontendProperties = frontendProperties;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.authWhitelistProperties = authWhitelistProperties;
+        this.tokenProperties = tokenProperties;
     }
 
     /**
@@ -111,7 +115,7 @@ public class SecurityConfig {
         // 允许请求的请求头请求头
         config.setAllowedHeaders(List.of("*"));
         // 统一配置暴露哪些响应头给前端，前端 Axios 就能无缝读取了
-        config.setExposedHeaders(List.of("Authorization","RefreshToken"));
+        config.setExposedHeaders(List.of(this.tokenProperties.getRefresh(),this.tokenProperties.getAccess()));
         config.setMaxAge(this.frontendProperties.getMaxAge()); // 缓存预检请求响应的时间（以秒为单位）
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config); // 对于所有路径实现上面的配置

@@ -1,5 +1,6 @@
 package com.laodeng.backend.config;
 
+import cn.hutool.core.util.ObjectUtil;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.boot.jackson.autoconfigure.JsonMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -52,7 +53,7 @@ public class JacksonConfig {
         protected LocalDateTime _fromString(JsonParser p, DeserializationContext ctxt, String string0)
                 throws JacksonException {
             String string = string0.trim();
-            if (string.isEmpty()) {
+            if (ObjectUtil.isEmpty(string)) {
                 return _fromEmptyString(p, ctxt, string);
             }
             for (DateTimeFormatter formatter : INPUT_FORMATTERS) {

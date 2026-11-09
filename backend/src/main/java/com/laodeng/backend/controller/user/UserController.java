@@ -35,32 +35,34 @@ import java.util.concurrent.TimeUnit;
  * @date 2026/7/26 19:06
  * @description user 相关的接口
  */
-
 @Log4j2
 @RestController
 @RequestMapping("/user")
 @RequiredArgsConstructor
 @Validated
 public class UserController {
+
     private final UserService userService;
     private final UserRestrictService userRestrictService;
     private final UserRoleService userRoleService;
-    private final UserProfileService  userProfileService;
+    private final UserProfileService userProfileService;
 
     // ==================== 登陆注册部分 ====================
     /**
      * 登陆接口
+     *
      * @param loginDTO
      * @return
      */
     @PostMapping("/login")
-    public R<Map<String,String>> login(@RequestBody @Validated LoginDTO loginDTO, HttpServletRequest request) {
-        Map<String,String> isLogin = this.userService.login(loginDTO,request);
+    public R<Map<String, String>> login(@RequestBody @Validated LoginDTO loginDTO, HttpServletRequest request) {
+        Map<String, String> isLogin = this.userService.login(loginDTO, request);
         return R.success(isLogin);
     }
 
     /**
      * 注册接口
+     *
      * @param registerDTO
      */
     @PostMapping("/register")
@@ -71,18 +73,19 @@ public class UserController {
 
     /**
      * 使用携带的长时token请求获得短时token
+     *
      * @param request
      * @return
      */
     @PostMapping("/get_short_token")
-    public R<String> getShortToken(HttpServletRequest request){
-        return R.success(this.userService.getShortToken(request));
+    public R<String> getShortToken(HttpServletRequest request) {
+        return R.success(this.userService.getAccessToken(request));
     }
 
     // ==================== 用户部分 ====================
-
     /**
      * 管理员创建用户
+     *
      * @param userCreateDTO
      * @return
      */
@@ -92,9 +95,9 @@ public class UserController {
         return R.success(this.userService.createUser(userCreateDTO));
     }
 
-
     /**
      * 删除用户
+     *
      * @param id
      * @return
      */
@@ -107,6 +110,7 @@ public class UserController {
 
     /**
      * 更新用户
+     *
      * @param userUpdateDTO
      * @return
      */
@@ -118,6 +122,7 @@ public class UserController {
 
     /**
      * 查询用户数据
+     *
      * @param userDTO
      * @return
      */
@@ -131,6 +136,7 @@ public class UserController {
 
     /**
      * 根据id查询
+     *
      * @param id
      * @return
      */
@@ -143,6 +149,7 @@ public class UserController {
 
     /**
      * 删除用户权限
+     *
      * @param userId
      * @return
      */
@@ -155,6 +162,7 @@ public class UserController {
 
     /**
      * 更新用户权限
+     *
      * @param userRoleUpdateDTO
      * @return
      */
@@ -164,9 +172,9 @@ public class UserController {
         return R.success(this.userRoleService.updateUserRole(userRoleUpdateDTO));
     }
 
-
     /**
      * 获取权限
+     *
      * @param userId
      * @return
      */
@@ -177,9 +185,9 @@ public class UserController {
     }
 
     // ==================== 用户配置文件部分 ====================
-
     /**
      * 删除用户配置文件类
+     *
      * @param userId
      * @param request
      * @return
@@ -193,6 +201,7 @@ public class UserController {
 
     /**
      * 保存用户头像
+     *
      * @param multipartFile
      * @param request
      * @param userId
@@ -202,24 +211,26 @@ public class UserController {
     @PostMapping("/saveUserAvatar")
     public R<String> saveUserAvatar(MultipartFile multipartFile, HttpServletRequest request, Long userId) {
         String avatarUrl = this.userProfileService.saveUserAvatar(multipartFile, userId, request);
-        ThrowUtils.throwIf(avatarUrl == null || avatarUrl.isEmpty(), ErrorCode.UPLOAD_ERROR, "上传头像失败");
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(avatarUrl), ErrorCode.UPLOAD_ERROR, "上传头像失败");
         return R.success(avatarUrl);
     }
 
     /**
      * 更新用户配置文件
+     *
      * @param userProfileUpdateDTO
      * @return
      */
     @PreAuthorize("hasRole('USER')")
     @PatchMapping("/updateUserProfile")
-    public R<Boolean> updateUserProfile(UserProfileUpdateDTO userProfileUpdateDTO,HttpServletRequest request) {
-        boolean result = this.userProfileService.updateUserProfile(userProfileUpdateDTO,request);
+    public R<Boolean> updateUserProfile(@RequestBody UserProfileUpdateDTO userProfileUpdateDTO, HttpServletRequest request) {
+        boolean result = this.userProfileService.updateUserProfile(userProfileUpdateDTO, request);
         return R.success(result);
     }
 
     /**
      * 获取自身的用户配置文件
+     *
      * @return
      */
     @PreAuthorize("hasRole('USER')")
@@ -230,54 +241,58 @@ public class UserController {
 
     /**
      * 根据用户id查询配置文件
+     *
      * @param userId
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/profile/{userId}")
-    public R<UserProfileVO> getUserProfileByUserId(@PathVariable  Long userId) {
+    public R<UserProfileVO> getUserProfileByUserId(@PathVariable Long userId) {
         return R.success(this.userProfileService.getUserProfileByUserId(userId));
     }
 
     // ==================== 账户封禁部分 ====================
-
     /**
      * 封禁帐户
+     *
      * @param blockedUserDTO
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/blockedUser")
-    public R<Void> blockedUser(@RequestBody @Validated BlockedUserDTO  blockedUserDTO) {
+    public R<Void> blockedUser(@RequestBody @Validated BlockedUserDTO blockedUserDTO) {
         this.userService.blockedUser(blockedUserDTO);
         return R.success();
     }
 
     /**
      * 删除redis中的权限数据
+     *
      * @param userId
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/deleteUserSecurity/{userId}")
-    public R<Void> deleteUserSecurity(@PathVariable  Long userId) {
+    public R<Void> deleteUserSecurity(@PathVariable Long userId) {
         this.userService.deleteUserSecurity(userId);
         return R.success();
     }
 
     /**
      * 给用户的一段长时Token做限流
+     *
      * @return
      */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/restrictUserToken")
-    public R<Void> restrictUserToken(UserRestrictDTO restrictDTO){
+    public R<Void> restrictUserToken(@RequestBody UserRestrictDTO restrictDTO) {
         this.userRestrictService.restrictUserToken(restrictDTO);
         return R.success();
     }
 
     /**
      * 查询用户限流配置
+     *
      * @param userId 用户id
      * @return 限流配置
      */

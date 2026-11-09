@@ -8,7 +8,6 @@ import com.laodeng.backend.domain.po.UserRole;
 import com.laodeng.backend.exception.ThrowUtils;
 import com.laodeng.backend.service.UserRoleService;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -34,171 +33,244 @@ import java.util.function.Function;
 public class JwtUtils {
     private final UserRoleService userRoleService;
     private final JwtProperties jwtProperties;
-    private SecretKey secretKey;
+    private final SecretKey accessSecretKey;
+    private final SecretKey refreshSecretKey;
+    private final String refreshType;
+    private final String accessType;
 
+    /**
+     * 初始化双 Token 各自的签名密钥（HS256 要求密钥至少 32 字节）
+     *
+     * @param userRoleService 用户角色服务，用于签发短时 Token 时查询角色权限
+     * @param jwtProperties   JWT 配置，含两把独立密钥与两段有效期
+     */
     @Autowired
     public JwtUtils(UserRoleService userRoleService, JwtProperties jwtProperties) {
         this.userRoleService = userRoleService;
         this.jwtProperties = jwtProperties;
-        this.secretKey = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
+        this.accessSecretKey = Keys.hmacShaKeyFor(jwtProperties.getAccessSecret().getBytes(StandardCharsets.UTF_8));
+        this.refreshSecretKey = Keys.hmacShaKeyFor(jwtProperties.getRefreshSecret().getBytes(StandardCharsets.UTF_8));
+        this.refreshType = "refresh";
+        this.accessType = "access";
+
     }
 
     /**
-     * 创建长时Token
+     * 使用长时token交换获得短时token
+     * @param refreshToken
+     * @return
      */
-    public String createToken(Long id) {
-        LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserRole::getUserId, id);
-        UserRole userRole = this.userRoleService.getOne(queryWrapper);
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(userRole) || ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
+    public String exchangeToken(String refreshToken){
+        Claims claims = Jwts.parser()
+                .verifyWith(this.refreshSecretKey)
+                .build()
+                .parseSignedClaims(refreshToken)
+                .getPayload();
+        String typ = String.valueOf(claims.get("typ"));
+        ThrowUtils.throwIf(ObjectUtil.notEqual(typ,this.refreshType),ErrorCode.TOKEN_ERROR);
+        Long userId = Long.parseLong(claims.getSubject());
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userId),ErrorCode.NO_AUTH_ERROR);
+        return createAccessToken(userId);
+    }
+
+    /**
+     * 创建长时Token（Refresh Token）
+     *
+     * @param id 用户id
+     * @return 只携带用户身份与刷新类型的 JWT 字符串
+     */
+    public String createRefreshToken(Long id) {
         return Jwts.builder()
                 .header()
                 .type("JWT")
-                .and() // 创建JWT构建器
+                .and()
                 .subject(String.valueOf(id)) // 将用户的id添加到令牌中
                 .issuer(this.jwtProperties.getIssuer()) // 签发者
+                .claim("typ", this.refreshType)
+                .issuedAt(new Date()) // 签发时间
+                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getLongExpiration())) // 令牌过期时间
+                .signWith(this.refreshSecretKey)
+                .compact();
+    }
+
+    /**
+     * 创建短时Token（Access Token），携带用户id、角色与权限
+     *
+     * @param id 用户id
+     * @return 携带角色权限的访问型 JWT 字符串
+     */
+    public String createAccessToken(Long id) {
+        LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserRole::getUserId, id);
+        UserRole userRole = this.userRoleService.getOne(queryWrapper);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
+        return Jwts.builder()
+                .header()
+                .type("JWT")
+                .and()
+                .subject(String.valueOf(id)) // 将用户的id添加到令牌中
+                .issuer(this.jwtProperties.getIssuer()) // 签发者
+                .claim("typ", this.accessType)
                 .claim("roles", userRole.getRoles()) // 添加角色
                 .claim("permissions", userRole.getPermissions()) // 添加权限
                 .issuedAt(new Date()) // 签发时间
-                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getLongExpiration())) // 令牌过期时间
-                .signWith(this.secretKey) // 向claim中添加密钥
+                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getShortExpiration())) // 令牌过期时间
+                .signWith(this.accessSecretKey)
                 .compact();
     }
 
     /**
-     * 创建短时Token
+     * 从长时Token中提取用户id
+     *
+     * @param token 长时Token
+     * @return 用户id；token 非法、过期或 subject 非数字时返回 null
      */
-    public String createToken(Long id,String key) {
-        LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserRole::getUserId, id);
-        UserRole userRole = this.userRoleService.getOne(queryWrapper);
-        ThrowUtils.throwIf(ObjectUtil.isEmpty(userRole) || ObjectUtil.isEmpty(userRole), ErrorCode.NO_ROLE_ERROR);
-        return Jwts.builder()
-                .header()
-                .type("JWT")
-                .and() // 创建JWT构建器
-                .issuer(this.jwtProperties.getIssuer()) // 签发者
-                .issuedAt(new Date()) // 签发时间
-                .expiration(new Date(System.currentTimeMillis() + this.jwtProperties.getShortExpiration())) // 令牌过期时间
-                .signWith(Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8))) // 向claim中添加密钥
-                .compact();
+    public Long extractRefreshId(String token) {
+        return parseSubject(token, true);
     }
 
+    /**
+     * 从短时Token中提取用户id
+     *
+     * @param token 短时Token
+     * @return 用户id；token 非法、过期或 subject 非数字时返回 null
+     */
+    public Long extractAccessId(String token) {
+        return parseSubject(token, false);
+    }
 
-    //解析长时Token的Id
-    public Long extractId(String token) {
+    /**
+     * 从短时Token中提取用户角色
+     *
+     * @param token 短时Token
+     * @return 角色列表
+     */
+    public List<String> extractRoles(String token) {
+        return extractAndReturnAccessClaims(token).get("roles", List.class);
+    }
+
+    /**
+     * 从短时Token中提取用户权限
+     *
+     * @param token 短时Token
+     * @return 权限列表
+     */
+    public List<String> extractPermissions(String token) {
+        return extractAndReturnAccessClaims(token).get("permissions", List.class);
+    }
+
+    /**
+     * 解析长时Token的全部声明，并校验 Token 类型
+     *
+     * @param token 长时Token
+     * @return 声明集合
+     * @throws JwtException 签名、有效期校验失败或 typ 不是 refresh 时抛出
+     */
+    public Claims extractAndReturnRefreshClaims(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(this.refreshSecretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        if (ObjectUtil.notEqual(this.refreshType, claims.get("typ", String.class))) {
+            throw new JwtException("Token类型错误");
+        }
+        return claims;
+    }
+
+    /**
+     * 解析短时Token的全部声明，并校验 Token 类型
+     *
+     * @param token 短时Token
+     * @return 声明集合
+     * @throws JwtException 签名、有效期校验失败或 typ 不是 access 时抛出
+     */
+    public Claims extractAndReturnAccessClaims(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(this.accessSecretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        if (ObjectUtil.notEqual(this.accessType, claims.get("typ", String.class))) {
+            throw new JwtException("Token类型错误");
+        }
+        return claims;
+    }
+
+    /**
+     * 校验长时Token是否有效（签名、有效期、typ 均通过解析校验）
+     *
+     * @param token 长时Token
+     * @return true 表示基础 JWT 校验通过
+     */
+    public boolean isTokenValid(String token) {
         try {
-            String subject = extractClaim(token, Claims::getSubject);
-            if (subject == null || subject.isEmpty()) {
+            extractAndReturnRefreshClaims(token);
+            return true;
+        } catch (Exception e) {
+            log.error("校验长时Token失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 校验短时Token是否有效（签名、有效期、typ 均通过解析校验）
+     *
+     * @param token 短时Token
+     * @return true 表示基础 JWT 校验通过
+     */
+    public boolean isAccessTokenValid(String token) {
+        try {
+            extractAndReturnAccessClaims(token);
+            return true;
+        } catch (Exception e) {
+            log.error("校验短时Token失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 从长时Token中取出 Claims 后可自定义提取字段
+     *
+     * @param token          长时Token
+     * @param claimsResolver 声明字段提取函数
+     * @return 提取结果
+     */
+    public <T> T extractrefreshClaim(String token, Function<Claims, T> claimsResolver) {
+        return claimsResolver.apply(extractAndReturnRefreshClaims(token));
+    }
+
+    /**
+     * 从短时Token中取出 Claims 后可自定义提取字段
+     *
+     * @param token          短时Token
+     * @param claimsResolver 声明字段提取函数
+     * @return 提取结果
+     */
+    public <T> T extractAccessClaim(String token, Function<Claims, T> claimsResolver) {
+        return claimsResolver.apply(extractAndReturnAccessClaims(token));
+    }
+
+    /**
+     * 解析 Token 的 subject 并转换为用户id
+     *
+     * @param token       待解析 Token
+     * @param refresh     true 按长时Token解析，false 按短时Token解析
+     * @return 用户id；解析失败返回 null
+     */
+    private Long parseSubject(String token, boolean refresh) {
+        try {
+            Claims claims = refresh ? extractAndReturnRefreshClaims(token) : extractAndReturnAccessClaims(token);
+            String subject = claims.getSubject();
+            if (ObjectUtil.isEmpty(subject)) {
                 return null;
             }
             Long id = Long.valueOf(subject);
             log.info("web_id:{}", id);
             return id;
-        } catch (Exception e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.warn("从令牌中提取用户ID失败: {}", e.getMessage());
             return null;
         }
-    }
-
-    /**
-     * 从长时token中提取用户角色
-     * @param token
-     * @return List<String>
-     */
-    public List<String> extractRoles(String token) {
-        return extractAndReturnClaims(token).get("roles", List.class);
-    }
-
-    /**
-     * 从长时token中提取用户权限
-     * @param token
-     * @return List<String>
-     */
-    public List<String> extractPermissions(String token) {
-        return extractAndReturnClaims(token).get("permissions", List.class);
-    }
-
-    //提取长时Token中所有的声明
-    public Claims extractAndReturnClaims(String token) {
-        // 尝试提取token中的所有声明（Claims）
-        try {
-            // 使用JWT库解析token
-            return Jwts.parser()
-                    .verifyWith(this.secretKey) // 设置密钥
-                    .build()
-                    .parseSignedClaims(token) // 解析并验证token
-                    .getPayload();
-        } catch (ExpiredJwtException e) {
-            return e.getClaims();
-        } catch (JwtException e) {
-            throw e;
-        }
-    }
-
-    //提取短时token的所有的声明
-    public Claims extractAndReturnClaims(String token,String key) {
-        // 尝试提取token中的所有声明（Claims）
-        try {
-            // 使用JWT库解析token
-            return Jwts.parser()
-                    .verifyWith(Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8))) // 设置密钥
-                    .build()
-                    .parseSignedClaims(token) // 解析并验证token
-                    .getPayload();
-        } catch (ExpiredJwtException e) {
-            return e.getClaims();
-        } catch (JwtException e) {
-            throw e;
-        }
-    }
-
-    // 验证当前长时token是否有效
-    public boolean isTokenValid(String token) {
-        // 用于判断当前token是否过期
-        try {
-            return extractExpiration(token).after(new Date());
-        } catch (Exception e) {
-            log.error("从令牌中提取过期时间时发生异常:{}", e.getMessage());
-            return false;
-        }
-    }
-
-    // 验证当前短时token是否过期
-    public boolean isTokenValid(String token,String key) {
-        // 用于判断当前token是否过期
-        try {
-            return extractExpiration(token,key).after(new Date());
-        } catch (Exception e) {
-            log.error("从令牌中提取过期时间时发生异常:{}", e.getMessage());
-            return false;
-        }
-    }
-
-    // 获取长时Token令牌过期时间
-    private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    //获取短时Token的令牌过期时间
-    private Date extractExpiration(String token,String key) {
-        return extractClaim(token, Claims::getExpiration,key);
-    }
-
-
-    // 提取长时Token的Claim中的数据
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        // 调用extractAllClaims方法，传入令牌token，提取所有的声明信息
-        final Claims claims = extractAndReturnClaims(token);
-        // 使用传入的claimsResolver函数，对提取的声明信息进行处理，并返回处理后的结果
-        return claimsResolver.apply(claims);
-    }
-
-    // 提取短时Token的Claim中的数据
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver,String key) {
-        // 调用extractAllClaims方法，传入令牌token，提取所有的声明信息
-        final Claims claims = extractAndReturnClaims(token,key);
-        // 使用传入的claimsResolver函数，对提取的声明信息进行处理，并返回处理后的结果
-        return claimsResolver.apply(claims);
     }
 }

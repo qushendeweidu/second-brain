@@ -36,5 +36,5 @@ public interface UserService extends IService<User> {
 
     void deleteUserSecurity(Long userId);
 
-    String getShortToken(HttpServletRequest request);
+    String getAccessToken(HttpServletRequest request);
 }

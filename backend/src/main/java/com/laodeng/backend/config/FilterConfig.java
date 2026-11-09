@@ -2,6 +2,7 @@ package com.laodeng.backend.config;
 
 import com.laodeng.backend.config.properties.AuthWhitelistProperties;
 import com.laodeng.backend.config.properties.TokenProperties;
+import com.laodeng.backend.exception.security.JwtAuthenticationEntryPoint;
 import com.laodeng.backend.filter.JwtAuthenticationFilter;
 import com.laodeng.backend.handler.RedisSecurityHandle;
 import com.laodeng.backend.service.UserService;
@@ -26,16 +27,19 @@ public class FilterConfig {
     private final RedisSecurityHandle redisSecurityHandle;
     private final List<String> authWhitelist;
     private final TokenProperties tokenProperties;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
     @Autowired
     public FilterConfig(JwtUtils jwtUtils,
                         RedisSecurityHandle redisSecurityHandle,
                         TokenProperties tokenProperties,
-                        AuthWhitelistProperties authWhitelistProperties) {
+                        AuthWhitelistProperties authWhitelistProperties,
+                        JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
         this.jwtUtils = jwtUtils;
         this.redisSecurityHandle = redisSecurityHandle;
         this.authWhitelist = authWhitelistProperties.getWhitelist();
         this.tokenProperties = tokenProperties;
+        this.jwtAuthenticationEntryPoint=jwtAuthenticationEntryPoint;
     }
 
     /**
@@ -46,7 +50,11 @@ public class FilterConfig {
     public JwtAuthenticationFilter jwtAuthenticationFilter(){
 
         return new JwtAuthenticationFilter(
-                this.jwtUtils,this.redisSecurityHandle,this.authWhitelist,this.tokenProperties);
+                this.jwtUtils,
+                this.redisSecurityHandle,
+                this.authWhitelist,
+                this.tokenProperties,
+                this.jwtAuthenticationEntryPoint);
     }
 
     /**

@@ -1,7 +1,6 @@
 package com.laodeng.backend.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
@@ -82,7 +81,7 @@ public class UserProfileServiceImpl extends ServiceImpl<UserProfileMapper, UserP
 
     @Override
     public UserProfileVO getUserProfileByUserId(Long userId) {
-        ThrowUtils.throwIf(userId == null || ObjUtil.isEmpty(userId), ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(ObjectUtil.isEmpty(userId), ErrorCode.PARAMS_ERROR);
         return toVO(getProfile(userId));
     }
 

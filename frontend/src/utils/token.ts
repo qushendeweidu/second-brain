@@ -2,10 +2,10 @@ import type { TokenMap } from '@/types'
 
 /** 长 token（RefreshToken 头，30 天）存储键，持久化在 localStorage */
 const REFRESH_KEY = 'sb_refresh_token'
-/** 短 token（Authorization 头，1 小时）存储键，存 sessionStorage，关闭标签页即失效 */
-const SHORT_KEY = 'sb_short_token'
+/** 短 token（AccessToken 头，1 小时）存储键，存 sessionStorage，关闭标签页即失效 */
+const SHORT_KEY = 'sb_access_token'
 
-/** 长 token payload 中前端关心的字段 */
+/** Token payload 中前端关心的字段（角色权限只存在于短 token） */
 export interface TokenClaims {
   sub: string
   roles: string[]
@@ -20,17 +20,17 @@ export interface TokenClaims {
 export function getTokens(): TokenMap {
   return {
     RefreshToken: localStorage.getItem(REFRESH_KEY) ?? undefined,
-    Authorization: sessionStorage.getItem(SHORT_KEY) ?? undefined,
+    AccessToken: sessionStorage.getItem(SHORT_KEY) ?? undefined,
   }
 }
 
 /**
  * 写入 token；只覆盖 map 中存在的 key（后端可能只返回其中一个）。
- * @param map 登录响应 data 或 { Authorization: 短token }
+ * @param map 登录响应 data 或 { AccessToken: 短token }
  */
 export function setTokens(map: TokenMap): void {
   if (map.RefreshToken) localStorage.setItem(REFRESH_KEY, map.RefreshToken)
-  if (map.Authorization) sessionStorage.setItem(SHORT_KEY, map.Authorization)
+  if (map.AccessToken) sessionStorage.setItem(SHORT_KEY, map.AccessToken)
 }
 
 /** 清空本地双 token（退出登录 / token 失效时调用） */
@@ -87,13 +87,14 @@ export function isExpired(token: string | undefined): boolean {
 }
 
 /**
- * 从长 token 解析用户 id、角色与权限。
- * @returns claims；无长 token 或解析失败返回 null
+ * 从短 token 解析用户 id、角色与权限；无短 token 时退回长 token 只取用户 id。
+ * @returns claims；两个 token 都缺失或解析失败返回 null
  */
 export function getClaims(): TokenClaims | null {
-  const { RefreshToken } = getTokens()
-  if (!RefreshToken) return null
-  const payload = decodeJwt<Partial<TokenClaims>>(RefreshToken)
+  const { RefreshToken, AccessToken } = getTokens()
+  const source = AccessToken ?? RefreshToken
+  if (!source) return null
+  const payload = decodeJwt<Partial<TokenClaims>>(source)
   if (!payload?.sub) return null
   return {
     sub: payload.sub,

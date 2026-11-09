@@ -37,7 +37,8 @@ mybatis-plus:
       insert-strategy: NOT_NULL
       update-strategy: NOT_NULL
 jwt:
-  secret: ${JWT_SECRET}
+  access-secret: ${JWT_ACCESS_SECRET}
+  refresh-secret: ${JWT_REFRESH_SECRET}
   long-expiration: 2592000000
   short-expiration: 3600000
   issuer: second-brain
@@ -117,7 +118,7 @@ frontend:
 
 token:
   refresh: RefreshToken
-  generation: Authorization
+  access: AccessToken
 
 minio:
   endpoint: http://${MINIO_HOST}:${MINIO_API_PORT}

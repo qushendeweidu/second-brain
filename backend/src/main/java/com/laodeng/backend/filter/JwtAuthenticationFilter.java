@@ -3,17 +3,15 @@ package com.laodeng.backend.filter;
 import cn.hutool.core.util.ObjectUtil;
 import com.laodeng.backend.common.ErrorCode;
 import com.laodeng.backend.config.properties.TokenProperties;
-import com.laodeng.backend.domain.po.User;
 import com.laodeng.backend.exception.BusinessException;
 import com.laodeng.backend.exception.ThrowUtils;
+import com.laodeng.backend.exception.security.JwtAuthenticationEntryPoint;
 import com.laodeng.backend.handler.RedisSecurityHandle;
-import com.laodeng.backend.service.UserService;
 import com.laodeng.backend.utils.JwtUtils;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
@@ -22,7 +20,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -44,12 +41,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final List<String> authWhitelist;
     private final AntPathMatcher pathMatcher;
     private final TokenProperties tokenProperties;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
-    public JwtAuthenticationFilter(JwtUtils jwtUtils, RedisSecurityHandle redisSecurityHandle, List<String> authWhitelist, TokenProperties tokenProperties) {
+    public JwtAuthenticationFilter(JwtUtils jwtUtils,
+                                   RedisSecurityHandle redisSecurityHandle,
+                                   List<String> authWhitelist,
+                                   TokenProperties tokenProperties,
+                                   JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint) {
         this.jwtUtils = jwtUtils;
         this.redisSecurityHandle = redisSecurityHandle;
         this.authWhitelist = authWhitelist;
         this.tokenProperties = tokenProperties;
+        this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.pathMatcher = new AntPathMatcher();
     }
 
@@ -58,39 +61,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.info("当前线程: {}", Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
         try {
-            String shortToken = request.getHeader(this.tokenProperties.getGeneration()); // 从请求中获取短时token
+            String accessToken = request.getHeader(this.tokenProperties.getAccess()); // 从请求中获取短时token
             String refreshToken = request.getHeader(this.tokenProperties.getRefresh()); // 从请求中获取长Token
             //判断当前长短token是否为空一般情况下会首先去登录因为登录不会进入过滤器
-            if (ObjectUtil.isEmpty(refreshToken) || ObjectUtil.isEmpty(shortToken)) {
+            if (ObjectUtil.isEmpty(refreshToken) || ObjectUtil.isEmpty(accessToken)) {
                 log.info("用户Token为空");
                 throw new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token为空");
             }
             // 校验当前传入的JWT token是否符合JWT标准
-            ThrowUtils.throwIf(shortToken.split("\\.").length!=3 || refreshToken.split("\\.").length!=3,new BusinessException(ErrorCode.TOKEN_ERROR));
+            ThrowUtils.throwIf(accessToken.split("\\.").length!=3 || refreshToken.split("\\.").length!=3,new BusinessException(ErrorCode.TOKEN_ERROR));
             //校验长时token是否有效
             ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(refreshToken),ErrorCode.TOKEN_ERROR);
             //长时token有效之后获取token中的用户id
-            Long userId = this.jwtUtils.extractId(refreshToken); // 从token中提取用户id，这里即使token过期也可以正常获取userId
-            ThrowUtils.throwIf(ObjectUtil.isEmpty(userId), new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));//如果用户ID为空那么抛出异常
+            Long userId = this.jwtUtils.extractRefreshId(refreshToken); // 从token中提取用户id
+            ThrowUtils.throwIf(ObjectUtil.isEmpty(userId)||
+                            ObjectUtil.notEqual(userId,this.jwtUtils.extractAccessId(accessToken))
+                    , new BusinessException(ErrorCode.TOKEN_ERROR, "用户Token无效"));//如果用户ID为空那么抛出异常
+
             //判断当前长时token是否存在
             String redisToken = this.redisSecurityHandle.getSecurityKey(userId.toString());
+
+            //判断当前redis是否为空
             ThrowUtils.throwIf(ObjectUtil.isEmpty(redisToken),ErrorCode.TOKEN_ERROR);
+
+            // 首先检测当前token的userId的redis是否被短时封禁
+            ThrowUtils.throwIf(ObjectUtil.equal(redisToken,"0"),ErrorCode.USER_BLOCKED);
             // 如果当前长时token存在但是与redis中存储的不一致时一律视作作废
             ThrowUtils.throwIf(ObjectUtil.notEqual(refreshToken, redisToken), ErrorCode.TOKEN_ERROR);
-            // 短时token如果无效直接抛异常
-            // （长时token作为短时token的密钥）
-            ThrowUtils.throwIf(!this.jwtUtils.isTokenValid(shortToken,refreshToken),ErrorCode.TOKEN_ERROR);
-            // 首先检测当前token的userId的redis是否被短时封禁
-            ThrowUtils.throwIf(ObjectUtil.equal(this.redisSecurityHandle.getSecurityKey(userId.toString()),"0"),ErrorCode.USER_BLOCKED);
+            // 短时token如果无效直接抛异常（使用 access 密钥独立校验）
+            ThrowUtils.throwIf(!this.jwtUtils.isAccessTokenValid(accessToken),ErrorCode.TOKEN_ERROR);
 
             // Security封装好的对象列表用于存储用户的权限和角色
             List<GrantedAuthority> authorities = new ArrayList<>();
-            // 从token中获取用户角色
-            this.jwtUtils.extractRoles(refreshToken).forEach(
+            // 从短时token中获取用户角色
+            this.jwtUtils.extractRoles(accessToken).forEach(
                     role -> authorities.add(new SimpleGrantedAuthority("ROLE_"+role))
             );
-            // 从token中获取用户权限
-            this.jwtUtils.extractPermissions(refreshToken).forEach(
+            // 从短时token中获取用户权限
+            this.jwtUtils.extractPermissions(accessToken).forEach(
                     permission -> authorities.add(new SimpleGrantedAuthority(permission))
             );
             // 创建Authentication对象保存用户权限和用户Id
@@ -102,19 +110,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
              */
             SecurityContextHolder.getContext().setAuthentication(authentication);
             request.setAttribute("userId", userId); //将当前的用户id存入到请求中
-            filterChain.doFilter(request, response);
-        }catch (AuthenticationCredentialsNotFoundException e) {
-            // 标准认证异常 → 交给 Spring Security，会路由到 EntryPoint
-            throw e;
-        } catch (BusinessException e) {
+        }catch (BusinessException e) {
             // 非认证类业务异常，也转成认证异常（或按需处理）
             log.error("业务异常: {}", e.getMessage());
             setErrorAttributes(request, e.getErrorCode(), e.getMessage());
-            throw new AuthenticationCredentialsNotFoundException(e.getMessage(), e);
+            this.jwtAuthenticationEntryPoint.commence(
+                    request, response,
+                    new AuthenticationCredentialsNotFoundException(e.getMessage(), e));
+            return;
+        }
+        try {
+            filterChain.doFilter(request, response);
         } finally {
-            log.info("请求执行完毕请求耗时: {} ms", System.currentTimeMillis() - startTime);
-            log.info("当前线程: {} 请求完毕清除线程数据", Thread.currentThread().getName());
-
+            log.info("请求耗时: {} ms", System.currentTimeMillis() - startTime);
         }
     }
 

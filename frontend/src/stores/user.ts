@@ -4,7 +4,7 @@ import * as api from '@/api'
 import type { LoginDTO, UserProfileVO } from '@/types'
 import { clearTokens, getClaims, setTokens, type TokenClaims } from '@/utils/token'
 
-/** 用户状态：登录态、角色权限（取自长 token claim）与本人资料 */
+/** 用户状态：登录态、角色权限（取自短 token claim）与本人资料 */
 export const useUserStore = defineStore('user', () => {
   const claims = ref<TokenClaims | null>(getClaims())
   const profile = ref<UserProfileVO | null>(null)
@@ -27,6 +27,13 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
+   * 重新从本地 token 解析 claims（换取短 token 后需要调用，避免角色权限滞后）。
+   */
+  function syncClaims(): void {
+    claims.value = getClaims()
+  }
+
+  /**
    * 登录：清理旧 token 后请求，存储返回的 token map 并解析 claims。
    * @param dto 用户名与密码
    */
@@ -34,7 +41,7 @@ export const useUserStore = defineStore('user', () => {
     clearTokens()
     const map = await api.login(dto)
     setTokens(map)
-    claims.value = getClaims()
+    syncClaims()
     if (!claims.value) throw new Error('登录凭证解析失败')
   }
 
@@ -65,6 +72,7 @@ export const useUserStore = defineStore('user', () => {
     displayName,
     hasPermission,
     login,
+    syncClaims,
     fetchProfile,
     logout,
   }
